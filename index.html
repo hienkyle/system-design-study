@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>System Design Study Guides</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#F3F5F6; --surface:#FFFFFF; --ink:#17212B; --muted:#56636F; --line:#D5DCE1;
+  --accent:#0B6B75; --accent-soft:#DFEEEF;
+  --font:"IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#0F1519; --surface:#151D23; --ink:#E2E8EC; --muted:#94A3AE; --line:#2A363F;
+  --accent:#55C2CA; --accent-soft:#123038; color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.6}
+main{max-width:780px;margin:0 auto;padding-block:56px 80px;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+.eyebrow{font-family:var(--mono);font-size:.8rem;color:var(--accent);letter-spacing:.06em;margin:0 0 8px}
+h1{font-size:clamp(1.9rem,4.4vw,2.6rem);line-height:1.15;margin:0 0 12px;text-wrap:balance}
+.lede{color:var(--muted);margin:0 0 36px;text-align:justify}
+.lede a{color:var(--accent)}
+ol.units{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.units a{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:16px;align-items:center;
+  text-decoration:none;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.units a:hover{border-color:var(--accent)}
+.units a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.n{font-family:var(--mono);font-size:.85rem;color:var(--accent);background:var(--accent-soft);border-radius:8px;padding:4px 10px}
+.t b{display:block;font-weight:600}
+.t span{display:block;font-size:.88rem;color:var(--muted);text-align:justify}
+.go{color:var(--muted)}
+</style>
+</head>
+<body>
+<main>
+  <p class="eyebrow">SYSTEM DESIGN PRIMER</p>
+  <h1>System Design Study Guides</h1>
+  <p class="lede">Unit-by-unit study guides built from <a href="https://github.com/donnemartin/system-design-primer">The System Design Primer</a> and the sources each section links to.</p>
+  <ol class="units">
+    <li>
+      <a href="unit1.html">
+        <span class="n">Unit 1</span>
+        <span class="t"><b>System design topics: start here</b><span>Scaling a web app tier by tier (Harvard CS75 lecture) and the four-part “Scalability for Dummies” series: clones, databases, caches, asynchronism.</span></span>
+        <span class="go" aria-hidden="true">→</span>
+      </a>
+    </li>
+  </ol>
+</main>
+</body>
+</html>
