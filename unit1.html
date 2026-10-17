@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Unit 1 · Start Here</title>
+<title>Unit 1 · Scaling Fundamentals</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -44,7 +44,10 @@ code,kbd{font-family:var(--mono);font-size:.88em;background:var(--code-bg);paddi
 /* ---------- Contents rail ---------- */
 .rail{position:sticky;top:env(safe-area-inset-top, 0px);height:100vh;overflow-y:auto;padding-block:32px;
   scrollbar-width:thin;overscroll-behavior:contain}
-.rail-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.rail-head{display:flex;flex-direction:column;align-items:flex-start;gap:14px;position:sticky;top:0;z-index:2;background:var(--bg);padding-block:32px 4px;margin-top:-32px}
+.back{display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:var(--ink);font-size:.85rem;font-weight:500;
+  border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 12px 6px 9px}
+.back:hover{border-color:var(--accent);color:var(--accent)}
 .rail h2{font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 12px;font-weight:600}
 .toc-toggle{display:none}
 .toc ol{list-style:none;margin:0;padding:0}
@@ -156,8 +159,8 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
     background:var(--surface);border-bottom:1px solid var(--line);padding:0;
     margin-left:calc(-1 * max(16px, env(safe-area-inset-left, 0px)));margin-right:calc(-1 * max(16px, env(safe-area-inset-right, 0px)));
     padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
-  .rail-head{padding-block:10px}
-  .rail h2{margin:0;white-space:nowrap}
+  .rail-head{position:static;flex-direction:row;align-items:center;justify-content:space-between;padding-block:10px;margin-top:0;background:transparent}
+  .rail h2{display:none}
   .toc-toggle{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);
     border-radius:8px;padding:6px 10px;font:500 .85rem var(--font);cursor:pointer;min-width:0;max-width:72%}
   .toc-toggle span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -174,6 +177,7 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
 <div class="shell">
   <aside class="rail" aria-label="Contents">
     <div class="rail-head">
+      <a class="back" href="index.html" title="Back to all units"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>All units</a>
       <h2>Contents</h2>
       <button class="toc-toggle" id="tocToggle" aria-expanded="false" aria-controls="toc">
         <span id="tocCurrent">Contents</span>
@@ -194,7 +198,7 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
             <li><a href="#security">Security</a></li>
           </ol>
         </li>
-        <li><a href="#step-2"><span class="num">1.2</span>Step 2: Scalability article</a>
+        <li><a href="#step-2"><span class="num">1.2</span>Clones, databases, caches &amp; async work</a>
           <ol>
             <li><a href="#clones">Part 1 · Clones</a></li>
             <li><a href="#database">Part 2 · Database</a></li>
@@ -211,8 +215,8 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
 
   <main id="top">
     <header class="unit">
-      <p class="eyebrow">SYSTEM DESIGN PRIMER · UNIT 1</p>
-      <h1>System design topics: start here</h1>
+      <p class="eyebrow">SYSTEM DESIGN PRIMER · UNIT 1 · “START HERE”</p>
+      <h1>Scaling fundamentals: from one server to many</h1>
       <p class="lede">Before the individual topics, the primer asks you to build a basic picture of the common principles: what they are, how they are used, and their pros and cons. It does that in two steps: one lecture and one article series.<a class="src" href="#s1">[1]</a></p>
       <div class="meta"><span>Step 1 · Harvard CS75 lecture</span><span>Step 2 · “Scalability for Dummies”</span><span>Then · high-level trade-offs</span></div>
     </header>
@@ -443,8 +447,8 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
 
     <!-- ===================== 1.2 ===================== -->
     <section id="step-2">
-      <h2><span class="num">1.2</span>Step 2: Review the scalability article</h2>
-      <p><b>Scalability for Dummies</b> is a four-part blog series by Sebastian Kreutzberger, written as his answer to the question of what it takes to make a web service massively scalable.<a class="src" href="#s12">[12]</a><a class="src" href="#s13">[13]</a> Each part fixes the bottleneck that the previous part exposes.</p>
+      <h2><span class="num">1.2</span>Clones, databases, caches &amp; async work</h2>
+      <p>Based on <b>Scalability for Dummies</b>, Step 2 of the primer. It is a four-part blog series by Sebastian Kreutzberger, written as his answer to the question of what it takes to make a web service massively scalable.<a class="src" href="#s12">[12]</a><a class="src" href="#s13">[13]</a> Each part fixes the bottleneck that the previous part exposes.</p>
 
       <h3 id="clones">Part 1 · Clones</h3>
       <p>Public servers sit behind a load balancer that spreads user requests evenly over a cluster of application servers. A user may hit server 2, then server 9, then server 2 again, and must get the same result each time. That leads to the series’ first golden rule:<a class="src" href="#s12">[12]</a></p>
