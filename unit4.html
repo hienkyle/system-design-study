@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Unit 4 · Availability vs Consistency</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+img{max-width:100%}
+[hidden]{display:none!important}
+
+/* Layout: two-column study page — sticky, independently scrolling contents rail on the left; reading column on the right. Rail becomes a sticky top bar on small screens. */
+:root{
+  --bg:#F3F5F6; --surface:#FFFFFF; --ink:#17212B; --muted:#56636F; --line:#D5DCE1;
+  --accent:#0B6B75; --accent-soft:#DFEEEF; --warm:#A85A16; --warm-soft:#FAEEE0;
+  --code-bg:#EBF0F2; --good:#2E7D4F; --bad:#B23B3B;
+  --font:"IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --rail:270px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F1519; --surface:#151D23; --ink:#E2E8EC; --muted:#94A3AE; --line:#2A363F;
+  --accent:#55C2CA; --accent-soft:#123038; --warm:#E3A466; --warm-soft:#2D2218;
+  --code-bg:#1B252C; --good:#6FCB94; --bad:#EC8A8A; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F1519; --surface:#151D23; --ink:#E2E8EC; --muted:#94A3AE; --line:#2A363F;
+  --accent:#55C2CA; --accent-soft:#123038; --warm:#E3A466; --warm-soft:#2D2218;
+  --code-bg:#1B252C; --good:#6FCB94; --bad:#EC8A8A; color-scheme:dark}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.65;margin:0}
+a{color:var(--accent);text-underline-offset:2px}
+a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+code,kbd{font-family:var(--mono);font-size:.88em;background:var(--code-bg);padding:.08em .35em;border-radius:4px}
+
+.shell{display:grid;grid-template-columns:var(--rail) minmax(0,1fr);max-width:1240px;margin:0 auto;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));gap:40px}
+
+/* ---------- Contents rail ---------- */
+.rail{position:sticky;top:env(safe-area-inset-top, 0px);height:100vh;overflow-y:auto;padding-block:32px;
+  scrollbar-width:thin;overscroll-behavior:contain}
+.rail-head{display:flex;flex-direction:column;align-items:flex-start;gap:14px;position:sticky;top:-32px;z-index:2;background:var(--bg);padding-block:32px 4px;margin-top:-32px;margin-bottom:0}
+.back{display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:var(--ink);font-size:.85rem;font-weight:500;
+  border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 12px 6px 9px}
+.back:hover{border-color:var(--accent);color:var(--accent)}
+.rail h2{font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 12px;font-weight:600}
+.toc-toggle{display:none}
+.toc ol{list-style:none;margin:0;padding:0}
+.toc li{margin:0}
+.toc a{display:block;text-decoration:none;color:var(--muted);font-size:.9rem;line-height:1.35;padding:6px 10px;border-left:2px solid var(--line)}
+.toc a:hover{color:var(--ink)}
+.toc ol ol a{padding-left:24px;font-size:.84rem}
+.toc a.active{color:var(--accent);border-left-color:var(--accent);background:var(--accent-soft);font-weight:600}
+.toc a.parent-active{color:var(--ink);border-left-color:var(--accent)}
+.toc a{text-align:left;hyphens:none;scroll-margin-top:140px;scroll-margin-bottom:24px}
+.toc .num{font-family:var(--mono);font-size:.8em;margin-right:6px}
+
+/* ---------- Main ---------- */
+main{min-width:0;padding-block:40px 120px;max-width:780px}
+p,li,figcaption,.note p{text-align:justify;hyphens:auto;-webkit-hyphens:auto}
+header.unit{border-bottom:1px solid var(--line);padding-bottom:28px;margin-bottom:8px}
+.eyebrow{font-family:var(--mono);font-size:.8rem;color:var(--accent);letter-spacing:.06em;margin:0 0 8px;text-align:left}
+h1{font-size:clamp(1.9rem,4.4vw,2.6rem);line-height:1.15;margin:0 0 14px;font-weight:700;text-wrap:balance;letter-spacing:-.01em}
+h2{font-size:1.6rem;line-height:1.25;margin:64px 0 12px;text-wrap:balance;font-weight:700}
+h3{font-size:1.2rem;line-height:1.3;margin:44px 0 8px;text-wrap:balance;font-weight:600}
+h4{font-size:1rem;margin:26px 0 6px;font-weight:600}
+h2 .num,h3 .num{font-family:var(--mono);color:var(--accent);font-weight:500;margin-right:10px;font-size:.85em}
+.lede{font-size:1.08rem;color:var(--muted);margin:0}
+.meta{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:16px;font-size:.85rem;color:var(--muted)}
+.meta span{white-space:nowrap}
+ul,ol{padding-left:1.3em}
+li{margin:4px 0}
+.src{font-size:.72em;vertical-align:super;line-height:0;text-decoration:none;font-family:var(--mono);margin-left:1px}
+
+/* callouts */
+.callout{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:14px 18px;margin:20px 0}
+.callout.tip{border-left:4px solid var(--accent)}
+.callout.warn{border-left:4px solid var(--warm);background:var(--warm-soft)}
+.callout .label{display:block;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--muted);margin-bottom:4px;text-align:left}
+.callout p{margin:4px 0}
+
+.prosCons{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:16px 0}
+.prosCons div{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 16px;min-width:0}
+.prosCons h4{margin:4px 0;font-size:.85rem;letter-spacing:.06em;text-transform:uppercase}
+.prosCons .pro h4{color:var(--good)} .prosCons .con h4{color:var(--bad)}
+.prosCons ul{margin:4px 0;padding-left:1.1em}
+
+blockquote{margin:18px 0;padding:8px 18px;border-left:3px solid var(--warm);color:var(--ink);font-style:italic}
+blockquote cite{display:block;font-style:normal;font-size:.85rem;color:var(--muted);margin-top:4px}
+
+/* figures + tables */
+figure{margin:26px 0;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px}
+.figwrap{overflow-x:auto}
+figure svg{display:block;width:100%;height:auto;min-width:520px}
+figcaption{font-size:.88rem;color:var(--muted);margin-top:10px;border-top:1px dashed var(--line);padding-top:8px}
+figcaption b{color:var(--ink);font-family:var(--mono);font-weight:500;margin-right:4px}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem;min-width:520px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;font-size:.8rem;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+td code{white-space:nowrap}
+table.hist td code{white-space:normal;word-break:break-word}
+.tcap{caption-side:top;text-align:left;font-size:.88rem;color:var(--muted);padding-bottom:8px}
+.tcap b{color:var(--ink);font-family:var(--mono);font-weight:500;margin-right:4px}
+
+/* svg tokens */
+.s-box{fill:var(--surface);stroke:var(--line);stroke-width:1.5}
+.s-acc{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5}
+.s-warm{fill:var(--warm-soft);stroke:var(--warm);stroke-width:1.5}
+.s-line{stroke:var(--muted);stroke-width:1.5;fill:none}
+.s-dash{stroke:var(--muted);stroke-width:1.3;fill:none;stroke-dasharray:5 4}
+.s-t{fill:var(--ink);font-family:var(--font);font-size:13px}
+.s-tb{fill:var(--ink);font-family:var(--font);font-size:13px;font-weight:600}
+.s-ts{fill:var(--muted);font-family:var(--font);font-size:11px}
+.s-tm{fill:var(--muted);font-family:var(--mono);font-size:11px}
+.s-dot{fill:var(--accent)} .s-dot2{fill:var(--warm)}
+.s-arrow{fill:var(--muted)}
+@media (prefers-reduced-motion: reduce){.anim{display:none}}
+
+/* resource cards */
+.res{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:16px 0}
+.res a{display:block;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:12px 14px;text-decoration:none;color:var(--ink);min-width:0}
+.res a:hover{border-color:var(--accent)}
+.res b{display:block;font-size:.95rem}
+.res span{display:block;font-size:.82rem;color:var(--muted);margin-top:2px}
+ol.sources{font-size:.88rem;padding-left:2.2em}
+ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
+
+/* floating buttons */
+.fab{position:fixed;right:calc(18px + env(safe-area-inset-right, 0px));width:46px;height:46px;border-radius:50%;
+  border:1px solid var(--line);background:var(--surface);color:var(--ink);display:grid;place-items:center;cursor:pointer;
+  box-shadow:0 4px 14px rgba(0,0,0,.12);z-index:40;transition:opacity .2s, transform .2s}
+.fab svg{width:20px;height:20px}
+#toTop{bottom:calc(18px + env(safe-area-inset-bottom, 0px))}
+#notesBtn{bottom:calc(74px + env(safe-area-inset-bottom, 0px));background:var(--warm-soft);border-color:var(--warm);color:var(--warm)}
+#toTop.hide{opacity:0;pointer-events:none;transform:translateY(8px)}
+
+/* key-terms note widget */
+.note{position:fixed;right:calc(18px + env(safe-area-inset-right, 0px));bottom:calc(130px + env(safe-area-inset-bottom, 0px));
+  width:min(380px,calc(100vw - 36px));max-height:min(70vh,620px);overflow:auto;z-index:45;
+  background:var(--warm-soft);border:1px solid var(--warm);border-radius:12px;padding:0 18px 16px;
+  box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.note-head{position:sticky;top:0;background:var(--warm-soft);display:flex;justify-content:space-between;align-items:center;padding:14px 0 8px;border-bottom:1px dashed var(--warm)}
+.note-head strong{font-size:.95rem}
+.note-head button{border:0;background:none;color:var(--ink);font-size:1.3rem;cursor:pointer;line-height:1;padding:4px 8px}
+.note dl{margin:8px 0 0}
+.note dt{font-weight:600;font-size:.9rem;margin-top:10px}
+.note dd{margin:2px 0 0;font-size:.85rem;color:var(--ink);text-align:justify;hyphens:auto}
+.note h5{font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--warm);margin:16px 0 0}
+
+/* ---------- small screens ---------- */
+@media (max-width: 960px){
+  .shell{display:block}
+  body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top, 0px);z-index:31;background:var(--surface)}
+  .rail{position:sticky;top:env(safe-area-inset-top, 0px);z-index:30;height:auto;max-height:none;overflow:visible;
+    background:var(--surface);border-bottom:1px solid var(--line);padding:0;
+    margin-left:calc(-1 * max(16px, env(safe-area-inset-left, 0px)));margin-right:calc(-1 * max(16px, env(safe-area-inset-right, 0px)));
+    padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+  .rail-head{position:static;flex-direction:row;align-items:center;justify-content:space-between;padding-block:10px;margin-top:0;background:transparent}
+  .rail h2{display:none}
+  .toc-toggle{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);
+    border-radius:8px;padding:6px 10px;font:500 .85rem var(--font);cursor:pointer;min-width:0;max-width:72%}
+  .toc-toggle span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .toc{max-height:60vh;overflow-y:auto;padding-bottom:12px}
+  .toc[hidden]{display:none!important}
+  html{scroll-padding-top:70px}
+  main{padding-top:24px}
+}
+@media (min-width: 961px){ .toc[hidden]{display:block!important} }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <aside class="rail" aria-label="Contents">
+    <div class="rail-head">
+      <a class="back" href="index.html" title="Back to all units"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>All units</a>
+      <h2>Contents</h2>
+      <button class="toc-toggle" id="tocToggle" aria-expanded="false" aria-controls="toc">
+        <span id="tocCurrent">Contents</span>
+        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.6" fill="none"/></svg>
+      </button>
+    </div>
+    <nav class="toc" id="toc" hidden>
+      <ol>
+        <li><a href="#why"><span class="num">4.1</span>Why the trade-off exists</a></li>
+        <li><a href="#cap"><span class="num">4.2</span>The CAP theorem</a>
+          <ol>
+            <li><a href="#origin">Where it came from</a></li>
+            <li><a href="#guarantees">The three guarantees</a></li>
+            <li><a href="#precise">The precise terms</a></li>
+            <li><a href="#proof">Why CAP is true</a></li>
+            <li><a href="#no-ca">Why “CA” isn’t a choice</a></li>
+          </ol>
+        </li>
+        <li><a href="#cp"><span class="num">4.3</span>CP: keep consistency</a></li>
+        <li><a href="#ap"><span class="num">4.4</span>AP: keep availability</a></li>
+        <li><a href="#story"><span class="num">4.5</span>CAP in plain English</a>
+          <ol>
+            <li><a href="#story-steps">Remembrance Inc.</a></li>
+            <li><a href="#clerk">The run-around clerk</a></li>
+          </ol>
+        </li>
+        <li><a href="#misconceptions"><span class="num">4.6</span>Common misconceptions</a></li>
+        <li><a href="#resources"><span class="num">4.7</span>Resources</a></li>
+        <li><a href="#sources"><span class="num">4.8</span>Sources</a></li>
+      </ol>
+    </nav>
+  </aside>
+
+  <main id="top">
+    <header class="unit">
+      <p class="eyebrow">SYSTEM DESIGN PRIMER · UNIT 4</p>
+      <h1>Availability vs consistency</h1>
+      <p class="lede">The third of the primer’s high-level trade-offs. Once data lives on more than one machine, the network between them can fail, and when it does you must choose: answer every request, or only ever give correct answers.<a class="src" href="#s1">[1]</a></p>
+      <div class="meta"><span>Primer section · Availability vs consistency</span><span>Robert Greiner · “CAP Theorem: Revisited” (2014)</span><span>Kaushik Sathupadi · plain-English intro</span><span>Henry Robinson · CAP FAQ (2013)</span></div>
+    </header>
+
+    <!-- ===================== 4.1 ===================== -->
+    <section id="why">
+      <h2><span class="num">4.1</span>Why the trade-off exists</h2>
+      <p>Greiner starts from the trend of <b>scaling out</b>: handling more load by adding commodity machines rather than buying a bigger one (Unit 1’s horizontal scaling). Scaling out turns an application into a <b>distributed system</b>, a set of interconnected <b>nodes</b> that share data. That brings new complexity, and the CAP theorem describes it.<a class="src" href="#s2">[2]</a></p>
+      <p>Two points from Greiner set up everything below:<a class="src" href="#s2">[2]</a></p>
+      <ul>
+        <li><b>Distributed programming is not object-oriented programming.</b> Assumptions that hold when code shares memory inside one process stop holding when nodes are separated in space and time.</li>
+        <li><b>Networks are unreliable.</b> Assuming otherwise is one of the <i>fallacies of distributed computing</i>, a list of false assumptions whose first entry is “the network is reliable”.<a class="src" href="#s9">[9]</a> Network failures will happen to your system, and you don’t get to choose when.</li>
+      </ul>
+    </section>
+
+    <!-- ===================== 4.2 ===================== -->
+    <section id="cap">
+      <h2><span class="num">4.2</span>The CAP theorem</h2>
+
+      <h3 id="origin">Where it came from</h3>
+      <p>Eric Brewer posed the idea, then unproven, in his keynote <i>Towards Robust Distributed Systems</i> at the Principles of Distributed Computing (PODC) conference in 2000. Two years later, MIT researchers Seth Gilbert and Nancy Lynch formalised and proved it, turning “Brewer’s conjecture” into a theorem.<a class="src" href="#s4">[4]</a><a class="src" href="#s6">[6]</a><a class="src" href="#s7">[7]</a></p>
+
+      <h3 id="guarantees">The three guarantees</h3>
+      <p>The primer’s version: in a distributed computer system, you can only support two of the following guarantees.<a class="src" href="#s1">[1]</a></p>
+      <ul>
+        <li><b>Consistency (C)</b>: every read receives the most recent write or an error.</li>
+        <li><b>Availability (A)</b>: every request receives a response, without a guarantee that it contains the most recent version of the information.</li>
+        <li><b>Partition tolerance (P)</b>: the system continues to operate despite arbitrary partitioning due to network failures.</li>
+      </ul>
+      <figure>
+        <div class="figwrap">
+          <svg viewBox="0 -14 640 314" role="img" aria-labelledby="f1t">
+            <title id="f1t">The CAP triangle. Consistency at the top, availability bottom left, partition tolerance bottom right. The CP and AP edges are the real choices; the CA edge is dashed because partitions cannot be ruled out.</title>
+            <line x1="320" y1="52" x2="530" y2="240" stroke="var(--accent)" stroke-width="3"/>
+            <line x1="110" y1="240" x2="530" y2="240" stroke="var(--accent)" stroke-width="3"/>
+            <line x1="320" y1="52" x2="110" y2="240" stroke="var(--bad)" stroke-width="2" stroke-dasharray="6 5"/>
+            <circle cx="320" cy="52" r="30" class="s-acc"/><text x="320" y="58" text-anchor="middle" class="s-tb" style="font-size:18px">C</text>
+            <circle cx="110" cy="240" r="30" class="s-acc"/><text x="110" y="246" text-anchor="middle" class="s-tb" style="font-size:18px">A</text>
+            <circle cx="530" cy="240" r="30" class="s-warm"/><text x="530" y="246" text-anchor="middle" class="s-tb" style="font-size:18px">P</text>
+            <text x="320" y="8" text-anchor="middle" class="s-ts">Consistency · latest write or an error</text>
+            <text x="110" y="290" text-anchor="middle" class="s-ts">Availability · always a response</text>
+            <text x="530" y="290" text-anchor="middle" class="s-ts">Partition tolerance · survives a split network</text>
+            <rect x="397" y="133" width="56" height="26" rx="6" class="s-acc"/><text x="425" y="151" text-anchor="middle" class="s-tb">CP</text>
+            <rect x="292" y="227" width="56" height="26" rx="6" class="s-acc"/><text x="320" y="245" text-anchor="middle" class="s-tb">AP</text>
+            <rect x="187" y="133" width="56" height="26" rx="6" fill="var(--surface)"/>
+            <rect x="187" y="133" width="56" height="26" rx="6" fill="var(--bad)" fill-opacity=".16" stroke="var(--bad)" stroke-width="1.5"/>
+            <text x="215" y="151" text-anchor="middle" class="s-tb" style="fill:var(--bad)">CA</text>
+            <text x="178" y="143" text-anchor="end" class="s-ts" style="fill:var(--bad)">not realistic for a</text>
+            <text x="178" y="156" text-anchor="end" class="s-ts" style="fill:var(--bad)">distributed system</text>
+          </svg>
+        </div>
+        <figcaption><b>Figure 4.1</b> The “pick two” picture, redrawn after the primer’s figure from Greiner’s article.<a class="src" href="#s1">[1]</a><a class="src" href="#s2">[2]</a> P is shaded differently because it is not really optional, and the CA edge is red because it isn’t a real option for a distributed system: the choice is along the solid edges, CP or AP (§4.2, “Why CA isn’t a choice”).</figcaption>
+      </figure>
+      <p>The three sources word the guarantees slightly differently. The differences matter: they are exactly where most CAP arguments start.</p>
+      <div class="tablewrap">
+        <table>
+          <caption class="tcap"><b>Table 4.1</b> How each source defines C, A and P</caption>
+          <thead><tr><th></th><th>Primer<a class="src" href="#s1">[1]</a></th><th>Greiner<a class="src" href="#s2">[2]</a></th><th>CAP FAQ (formal)<a class="src" href="#s4">[4]</a></th></tr></thead>
+          <tbody>
+            <tr><td><b>C</b></td><td>Every read gets the most recent write, or an error</td><td>A read returns the most recent write for a given client</td><td>All reads and writes seen by all nodes are <i>atomic</i> (linearizable)</td></tr>
+            <tr><td><b>A</b></td><td>Every request gets a response, maybe not the latest data</td><td>A non-failing node answers reasonably, in reasonable time, with no error or timeout</td><td>Every request <i>eventually</i> completes with a valid (non-error) response</td></tr>
+            <tr><td><b>P</b></td><td>Keeps operating despite network failures splitting it</td><td>Keeps functioning when network partitions occur</td><td>The network is allowed to drop any messages</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="precise">The precise terms</h3>
+      <p>Robinson’s FAQ states the theorem exactly: it is impossible to build an implementation of <b>read-write storage</b> in an <b>asynchronous network</b> that is available, consistent and partition-tolerant all at once. Informally, you can’t build a database that both responds to every request <i>and</i> always returns the results you’d expect.<a class="src" href="#s4">[4]</a> The intermediary terms:</p>
+      <h4>Read-write storage (a register)</h4>
+      <p>CAP is about a <b>register</b>, a data structure with two operations: <code>set(X)</code> stores X, and <code>get()</code> returns the last value set. A key-value store can be modelled as many registers, so this simple object captures what most distributed stores do: write data and read it back.<a class="src" href="#s4">[4]</a></p>
+      <h4>Atomic (linearizable) consistency</h4>
+      <p>The register must look to every client as if it ran on <b>one machine</b>, answering operations in the order they arrive. The results of all clients’ operations, even concurrent ones, must match a single <b>serial</b> (one-after-another) execution.<a class="src" href="#s4">[4]</a><a class="src" href="#s8">[8]</a> This is very strong. It rules out <b>eventual consistency</b>, which allows a delay before a write becomes visible (Unit 5). It also respects <b>external communication</b>: if I read a value and tell you about it, you must be able to read it too.</p>
+      <div class="tablewrap">
+        <table class="hist">
+          <caption class="tcap"><b>Table 4.2</b> Robinson’s example histories (<code>A:</code> / <code>B:</code> = which client runs the operation)</caption>
+          <thead><tr><th>History</th><th>Atomic?</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td><code>set(10), set(5), get() = 10</code></td><td style="color:var(--bad)">✗</td><td>Allowed under eventual consistency (the newer write isn’t visible yet), not under atomic</td></tr>
+            <tr><td><code>B:set(5), A:set(10), A:get() = 10, B:get() = 10</code></td><td style="color:var(--good)">✓</td><td>Everyone sees the last write</td></tr>
+            <tr><td><code>B:set(5), A:set(10), A:get() = 10, B:get() = 5</code></td><td style="color:var(--bad)">✗</td><td>Matches <i>some</i> serial order, so it is <b>serializable</b>, a weaker guarantee. But if A tells B “it’s 10”, B’s read of 5 makes no sense</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:.85rem;color:var(--muted)">All three histories are from the CAP FAQ, §4.<a class="src" href="#s4">[4]</a></p>
+      <h4>Asynchronous network</h4>
+      <p>A network with <b>no bound</b> on how long a message takes to be delivered or processed. The key consequence: a node cannot tell a machine that has <b>failed</b> from one whose messages are merely <b>delayed</b>. Robinson argues real networks are effectively asynchronous, since clocks drift and retries or garbage-collection pauses can delay any message.<a class="src" href="#s4">[4]</a></p>
+      <h4>Available (formally)</h4>
+      <p>Every <code>get</code> and <code>set</code> must <b>eventually</b> return a valid response. <b>Errors don’t count</b>, otherwise a system could be “available” by always failing. The requirement is strong (100% of requests, no partial credit) and weak (no time limit, as long as it’s finite) at once.<a class="src" href="#s4">[4]</a></p>
+      <h4>Partition</h4>
+      <p>The network <b>loses</b> some messages to one or more nodes. Delay is not a partition: a message that eventually arrives was only slow. A <b>total partition</b> is a period in which <i>no</i> messages pass between two groups of nodes. CAP’s proof uses a total partition, and Robinson notes these are realistic, because traffic between two nodes often flows through a single component that can fail.<a class="src" href="#s4">[4]</a></p>
+      <div class="tablewrap">
+        <table>
+          <caption class="tcap"><b>Table 4.3</b> Failed, slow and partitioned nodes are different things</caption>
+          <thead><tr><th>Node is…</th><th>Messages reach it?</th><th>Must it answer clients?</th></tr></thead>
+          <tbody>
+            <tr><td><b>Failed</b></td><td>—</td><td>No: a failed machine is usually excused. CAP allows <i>no</i> failed machines, which makes it a strong result</td></tr>
+            <tr><td><b>Slow</b></td><td>Yes, eventually</td><td>Yes</td></tr>
+            <tr><td><b>Partitioned</b></td><td>Never (lost)</td><td>Yes: it is still up, just cut off</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:.85rem;color:var(--muted)">From CAP FAQ §15–16.<a class="src" href="#s4">[4]</a> Slow machines are what make lost messages hard to detect, which is at the heart of why CAP holds.</p>
+
+      <h3 id="proof">Why CAP is true</h3>
+      <p>The idea of the proof is a single scenario.<a class="src" href="#s4">[4]</a> A client writes to a node on one side of a partition. A read then arrives at a node on the other side, which cannot possibly know about that write. The second node has two options, and each breaks one guarantee:</p>
+      <ul>
+        <li>Answer with what it has: <b>possibly stale</b>, so consistency is lost.</li>
+        <li>Wait (potentially forever) to hear from the other side: availability is lost.</li>
+      </ul>
+      <figure>
+        <div class="figwrap">
+          <svg viewBox="0 0 640 320" role="img" aria-labelledby="f2t">
+            <title id="f2t">Client A writes x equals 2 to node 1. The update sent to node 2 is lost at the partition. Client B reads x from node 2, which must either wait and time out or error (CP) or return the stale value 1 (AP).</title>
+            <defs><marker id="ah1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="s-arrow"/></marker></defs>
+            <rect x="16" y="44" width="120" height="52" rx="8" class="s-box"/>
+            <text x="76" y="66" text-anchor="middle" class="s-tb">Client A</text><text x="76" y="84" text-anchor="middle" class="s-tm">set(x = 2)</text>
+            <rect x="16" y="204" width="120" height="52" rx="8" class="s-box"/>
+            <text x="76" y="226" text-anchor="middle" class="s-tb">Client B</text><text x="76" y="244" text-anchor="middle" class="s-tm">get(x) ?</text>
+            <rect x="222" y="36" width="150" height="68" rx="10" class="s-acc"/>
+            <text x="297" y="62" text-anchor="middle" class="s-tb">Node 1</text><text x="297" y="84" text-anchor="middle" class="s-tm">x: 1 → 2</text>
+            <rect x="222" y="196" width="150" height="68" rx="10" class="s-acc"/>
+            <text x="297" y="222" text-anchor="middle" class="s-tb">Node 2</text><text x="297" y="244" text-anchor="middle" class="s-tm">x: 1</text>
+            <line x1="136" y1="70" x2="218" y2="70" class="s-line" marker-end="url(#ah1)"/>
+            <line x1="136" y1="230" x2="218" y2="230" class="s-line" marker-end="url(#ah1)"/>
+            <path d="M196,150 l14,-8 l14,8 l14,-8 l14,8 l14,-8 l14,8 l14,-8 l14,8 l14,-8 l14,8 l14,-8 l14,8 l14,-8" stroke="var(--bad)" stroke-width="2.5" fill="none"/>
+            <text x="204" y="174" class="s-tm" style="fill:var(--bad)">partition</text>
+            <line x1="297" y1="104" x2="297" y2="136" class="s-dash"/>
+            <text x="297" y="168" text-anchor="middle" style="fill:var(--bad);font:700 18px var(--font)">✗</text>
+            <text x="350" y="122" class="s-ts">replicate x = 2 … lost</text>
+            <g class="anim"><circle r="6" class="s-dot"><animateMotion dur="2.4s" repeatCount="indefinite" path="M297,104 L297,146"/><animate attributeName="opacity" values="1;1;0" keyTimes="0;.8;1" dur="2.4s" repeatCount="indefinite"/></circle></g>
+            <line x1="372" y1="214" x2="440" y2="176" class="s-line" marker-end="url(#ah1)"/>
+            <line x1="372" y1="248" x2="440" y2="280" class="s-line" marker-end="url(#ah1)"/>
+            <rect x="444" y="142" width="184" height="64" rx="8" class="s-warm"/>
+            <text x="536" y="166" text-anchor="middle" class="s-tb">CP: wait for Node 1</text>
+            <text x="536" y="186" text-anchor="middle" class="s-ts">→ timeout or error</text>
+            <text x="536" y="200" text-anchor="middle" class="s-ts">(gives up A)</text>
+            <rect x="444" y="246" width="184" height="64" rx="8" class="s-warm"/>
+            <text x="536" y="270" text-anchor="middle" class="s-tb">AP: answer x = 1</text>
+            <text x="536" y="290" text-anchor="middle" class="s-ts">→ stale but responsive</text>
+            <text x="536" y="304" text-anchor="middle" class="s-ts">(gives up C)</text>
+          </svg>
+        </div>
+        <figcaption><b>Figure 4.2</b> The scenario behind the proof, as described in the CAP FAQ.<a class="src" href="#s4">[4]</a> Node 2 cannot see the write, so it must give up either a correct answer or an answer at all. Values are illustrative.</figcaption>
+      </figure>
+      <p>This is a <b>proof by construction</b>: it shows one situation where C and A can’t both hold. Robinson calls that a <b>critical condition</b>. CAP says nothing about how often it happens; until it does, a system can be consistent <i>and</i> available. But both guarantees are all-or-nothing (one stale read or one unanswered write breaks them), and a long-running system serving millions of requests will likely hit the critical condition, so you should know which guarantee yours gives up.<a class="src" href="#s4">[4]</a></p>
+
+      <h3 id="no-ca">Why “CA” isn’t a choice</h3>
+      <p>The primer’s key line: <i>networks aren’t reliable, so you’ll need to support partition tolerance</i>, and the real decision is a software trade-off between consistency and availability.<a class="src" href="#s1">[1]</a> Greiner makes the same point: you have fewer options than “pick two” suggests, because you can’t opt out of partitions.<a class="src" href="#s2">[2]</a> Robinson explains why “choose two” misleads: partition tolerance isn’t something you build; your system either might experience partitions or it won’t, and every distributed system might. He rewrites the theorem as:<a class="src" href="#s4">[4]</a></p>
+      <div class="callout tip"><span class="label">CAP, restated</span><p style="text-align:center"><code>Possibility of Partitions ⇒ Not (C and A)</code></p><p>If your system may experience partitions, it cannot always be both consistent and available. Systems that truly can’t partition, such as a single-site database, are outside the setting where CAP is useful. Calling a <i>distributed</i> database “CA” signals a misunderstanding.<a class="src" href="#s4">[4]</a></p></div>
+    </section>
+
+    <!-- ===================== 4.3 ===================== -->
+    <section id="cp">
+      <h2><span class="num">4.3</span>CP: consistency and partition tolerance</h2>
+      <p>During a partition, a CP system keeps answers correct by refusing to guess. Waiting for a response from the partitioned node might end in a <b>timeout error</b>;<a class="src" href="#s1">[1]</a> depending on the scenario, the system may instead return an <b>error</b> straight away.<a class="src" href="#s2">[2]</a></p>
+      <div class="callout tip"><span class="label">Choose CP when</span><p>Business needs require <b>atomic reads and writes</b>: a stale answer is worse than no answer.<a class="src" href="#s1">[1]</a><a class="src" href="#s2">[2]</a> Robinson’s example of a real system that relaxes availability because consistency matters most is <b>ZooKeeper</b>.<a class="src" href="#s4">[4]</a></p></div>
+    </section>
+
+    <!-- ===================== 4.4 ===================== -->
+    <section id="ap">
+      <h2><span class="num">4.4</span>AP: availability and partition tolerance</h2>
+      <p>During a partition, an AP system keeps answering. Responses return the most readily available version of the data on whichever node is reached, which might not be the latest. Writes are accepted and may take time to <b>propagate</b> once the partition is resolved.<a class="src" href="#s1">[1]</a><a class="src" href="#s2">[2]</a></p>
+      <div class="callout tip"><span class="label">Choose AP when</span><p>The business can allow for <b>eventual consistency</b> (Unit 5), or the system must keep working despite external errors.<a class="src" href="#s1">[1]</a> Greiner’s example is a <b>shopping cart</b>, which should keep working even when parts of the system fail.<a class="src" href="#s2">[2]</a> Robinson cites <b>Amazon’s Dynamo</b> as a system that relaxes consistency to stay highly available.<a class="src" href="#s4">[4]</a></p></div>
+      <div class="tablewrap">
+        <table>
+          <caption class="tcap"><b>Table 4.4</b> CP vs AP during a partition</caption>
+          <thead><tr><th></th><th>CP</th><th>AP</th></tr></thead>
+          <tbody>
+            <tr><td><b>Read on the cut-off side</b></td><td>Waits; may time out or return an error</td><td>Returns the local copy, possibly stale</td></tr>
+            <tr><td><b>Writes</b></td><td>Not accepted unless they can be applied consistently</td><td>Accepted; synced after the partition heals</td></tr>
+            <tr><td><b>Gives up</b></td><td>Availability</td><td>Consistency (temporarily)</td></tr>
+            <tr><td><b>Fits</b></td><td>Atomic reads/writes required</td><td>Eventual consistency acceptable; must keep working</td></tr>
+            <tr><td><b>Example</b></td><td>ZooKeeper</td><td>Shopping cart; Amazon Dynamo</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:.85rem;color:var(--muted)">Rows 1–4 from the primer and Greiner;<a class="src" href="#s1">[1]</a><a class="src" href="#s2">[2]</a> the CP write behaviour follows from the definition of C; examples from Greiner and the CAP FAQ.<a class="src" href="#s4">[4]</a></p>
+    </section>
+
+    <!-- ===================== 4.5 ===================== -->
+    <section id="story">
+      <h2><span class="num">4.5</span>CAP in plain English</h2>
+      <p>Kaushik Sathupadi explains CAP through a story about a two-person phone business. The people are the <b>nodes</b>, their notebooks are the <b>replicated data</b>, and the customers are <b>clients</b>.<a class="src" href="#s3">[3]</a></p>
+
+      <h3 id="story-steps">Remembrance Inc.</h3>
+      <p>The narrator starts a service: customers call to have him remember something (a boss’s phone number, say) and call back later to retrieve it, paying per call. As it grows, one person is too few: callers queue and hang up, and a sick day closes the business. So his wife joins, each has an extension phone, customers dial the same number, and a phone exchange (PBX) routes each call to whoever is free.<a class="src" href="#s3">[3]</a> Each step of the story then exposes one CAP property:</p>
+      <div class="tablewrap">
+        <table>
+          <caption class="tcap"><b>Table 4.5</b> The story, mapped to CAP</caption>
+          <thead><tr><th>What happens</th><th>CAP lesson</th></tr></thead>
+          <tbody>
+            <tr><td>A customer’s update lands in the wife’s notebook; his next call reaches the husband, whose notebook lacks it, so he gets a wrong answer.</td><td><b>Consistency</b> is broken: two nodes give different answers.</td></tr>
+            <tr><td>Fix: every update must involve both of them, and neither takes other calls until both notebooks are written. Searches, most of the traffic, carry on normally.</td><td>Consistent, at the cost of slower updates.</td></tr>
+            <tr><td>The wife points out that if one of them is off work, no update can complete.</td><td><b>Availability</b> is broken.</td></tr>
+            <tr><td>The narrator revises the plan so it handles absences, and claims it is now consistent <i>and</i> available. His wife can’t find a flaw.</td><td>C + A looks possible… while nothing is partitioned.</td></tr>
+            <tr><td>Both are at work, but the wife, angry with him, refuses to pass on updates for a day.</td><td>A <b>partition</b>: both nodes are up but can’t communicate.</td></tr>
+            <tr><td>His options: keep taking calls and risk wrong answers, or stop taking calls until they reconcile.</td><td>Keep serving = give up C (AP). Stop = give up A (CP).</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:.85rem;color:var(--muted)">Paraphrased from Sathupadi’s chapters 1–7.<a class="src" href="#s3">[3]</a> The details of the revised plan in row 4 did not load from the page, so only its claim is given here.</p>
+
+      <h3 id="clerk">The run-around clerk (eventual consistency)</h3>
+      <p>In a bonus chapter, a <b>run-around clerk</b> copies each new entry into the other person’s notebook in the background. Updates no longer block the phones. Sathupadi notes this is how many NoSQL systems work: one node updates locally and a background process syncs the rest. The cost is a window of inconsistency: a customer who calls back before the clerk arrives may get the old answer, which is acceptable if the window is short (for example, if customers don’t call back within five minutes).<a class="src" href="#s3">[3]</a> This is <b>eventual consistency</b>, the AP-friendly pattern covered in Unit 5.</p>
+      <figure>
+        <div class="figwrap">
+          <svg viewBox="0 0 640 330" role="img" aria-labelledby="f3t">
+            <title id="f3t">A customer's update is written to the wife's notebook immediately. A clerk carries it to the husband's notebook in the background. Until the clerk arrives, a read from the husband's notebook returns the old value.</title>
+            <defs><marker id="ah3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="s-arrow"/></marker></defs>
+            <rect x="16" y="20" width="130" height="50" rx="8" class="s-box"/><text x="81" y="42" text-anchor="middle" class="s-tb">Customer</text><text x="81" y="60" text-anchor="middle" class="s-tm">update</text>
+            <line x1="146" y1="45" x2="196" y2="45" class="s-line" marker-end="url(#ah3)"/>
+            <rect x="200" y="14" width="150" height="62" rx="10" class="s-acc"/><text x="275" y="40" text-anchor="middle" class="s-tb">Wife’s notebook</text><text x="275" y="60" text-anchor="middle" class="s-tm">new value ✓</text>
+            <rect x="200" y="150" width="150" height="62" rx="10" class="s-acc"/><text x="275" y="176" text-anchor="middle" class="s-tb">Husband’s notebook</text><text x="275" y="196" text-anchor="middle" class="s-tm">old value (for now)</text>
+            <path d="M350,45 C 470,45 470,181 354,181" class="s-dash" marker-end="url(#ah3)"/>
+            <text x="470" y="108" class="s-ts">clerk syncs in the</text><text x="470" y="122" class="s-ts">background</text>
+            <g class="anim"><circle r="7" class="s-dot2"><animateMotion dur="4s" repeatCount="indefinite" path="M350,45 C 470,45 470,181 354,181"/></circle></g>
+            <rect x="16" y="156" width="130" height="50" rx="8" class="s-box"/><text x="81" y="178" text-anchor="middle" class="s-tb">Caller</text><text x="81" y="196" text-anchor="middle" class="s-tm">read too soon</text>
+            <line x1="146" y1="181" x2="196" y2="181" class="s-line" marker-end="url(#ah3)"/>
+            <line x1="40" y1="282" x2="610" y2="282" class="s-line" marker-end="url(#ah3)"/>
+            <text x="606" y="300" text-anchor="end" class="s-ts">time →</text>
+            <rect x="140" y="268" width="320" height="28" fill="var(--warm)" fill-opacity=".18" stroke="var(--warm)" stroke-width="1.5"/>
+            <text x="370" y="260" text-anchor="middle" class="s-tb" style="fill:var(--warm)">stale-read window</text>
+            <line x1="140" y1="262" x2="140" y2="300" stroke="var(--accent)" stroke-width="2"/>
+            <text x="100" y="318" text-anchor="middle" class="s-ts">t₁ write saved</text>
+            <text x="100" y="330" text-anchor="middle" class="s-ts">(wife)</text>
+            <line x1="460" y1="262" x2="460" y2="300" stroke="var(--accent)" stroke-width="2"/>
+            <text x="520" y="318" text-anchor="middle" class="s-ts">t₂ clerk updates</text>
+            <text x="520" y="330" text-anchor="middle" class="s-ts">husband: consistent</text>
+            <g class="anim"><circle r="6" class="s-dot2"><animateMotion dur="4s" repeatCount="indefinite" path="M140,282 L460,282"/></circle></g>
+            <path d="M81,206 L250,264" class="s-dash" marker-end="url(#ah3)"/>
+            <line x1="250" y1="268" x2="250" y2="296" stroke="var(--warm)" stroke-width="2"/>
+            <text x="250" y="318" text-anchor="middle" class="s-ts" style="fill:var(--warm)">caller’s read</text>
+            <text x="250" y="330" text-anchor="middle" class="s-ts" style="fill:var(--warm)">→ old value</text>
+          </svg>
+        </div>
+        <figcaption><b>Figure 4.3</b> The run-around clerk from Sathupadi’s bonus chapter.<a class="src" href="#s3">[3]</a> Writes return immediately (t₁); the copy arrives later (t₂). A read that reaches the husband’s notebook between the two returns the old value. Timings are illustrative.</figcaption>
+      </figure>
+    </section>
+
+    <!-- ===================== 4.6 ===================== -->
+    <section id="misconceptions">
+      <h2><span class="num">4.6</span>Common misconceptions</h2>
+      <p>Robinson wrote the FAQ to settle frequent misunderstandings.<a class="src" href="#s4">[4]</a></p>
+      <ul>
+        <li><b>“CAP means we can’t build useful distributed systems.”</b> No. It is an impossibility result, not a death knell; it tells you which constraints to design within.</li>
+        <li><b>“C and A are on/off.”</b> Real systems <b>relax</b> one or both from CAP’s strict definitions, and must; the job is knowing when and how yours does. Weaken any assumption of the theorem, though, and its proof no longer applies.</li>
+        <li><b>“If no messages are lost, we can have both.”</b> Not in an asynchronous network: Gilbert and Lynch showed no atomic register there can be always available <i>and</i> consistent whenever messages aren’t lost, because a node can’t tell a lost message from a slow one. (In a <b>partially synchronous</b> network, with bounded message processing time, this particular result no longer holds.)</li>
+        <li><b>“CAP is the same as FLP.”</b> The FLP theorem (Fischer, Lynch and Paterson) says <b>consensus</b>, all nodes agreeing on one value, is unsolvable in general in an asynchronous network where one node may fail. Both are impossibility results, but FLP allows one failed node, forbids message loss, and concerns consensus rather than atomic storage.</li>
+        <li><b>“We beat CAP.”</b> You haven’t. At best you’ve built a system that isn’t heavily affected by it.</li>
+      </ul>
+      <div class="callout warn"><span class="label">In an interview</span><p>Don’t call a distributed design “CA”. Assume partitions will happen, then say which of C or A your design gives up during one, and why that suits the business (atomic reads/writes → CP; must keep working, staleness tolerable → AP).<a class="src" href="#s1">[1]</a><a class="src" href="#s4">[4]</a></p></div>
+    </section>
+
+    <!-- ===================== 4.7 ===================== -->
+    <section id="resources">
+      <h2><span class="num">4.7</span>Resources</h2>
+      <div class="res">
+        <a href="https://github.com/donnemartin/system-design-primer#availability-vs-consistency"><b>Primer: Availability vs consistency</b><span>The source section for this unit</span></a>
+        <a href="https://robertgreiner.com/cap-theorem-revisited/"><b>CAP Theorem: Revisited</b><span>Greiner’s short article; source of the primer’s figure and CP/AP text</span></a>
+        <a href="http://ksat.me/a-plain-english-introduction-to-cap-theorem"><b>A plain English introduction to CAP</b><span>The Remembrance Inc. story, plus eventual consistency</span></a>
+        <a href="https://github.com/henryr/cap-faq"><b>The CAP FAQ</b><span>Robinson’s precise definitions and myth-busting; read §2–10 first</span></a>
+        <a href="https://www.youtube.com/watch?v=k-Yaq8AHlFA"><b>L16: The CAP Theorem (video)</b><span>Lecture from the Distributed Systems Course YouTube channel</span></a>
+        <a href="https://users.ece.cmu.edu/~adrian/731-sp04/readings/GL-cap.pdf"><b>Gilbert &amp; Lynch (2002)</b><span>The original proof, linked from the CAP FAQ</span></a>
+        <a href="https://en.wikipedia.org/wiki/Linearizability"><b>Linearizability</b><span>More on atomic consistency, as the FAQ suggests</span></a>
+        <a href="https://github.com/donnemartin/system-design-primer#consistency-patterns"><b>Next: Consistency patterns</b><span>Weak, eventual and strong consistency (Unit 5)</span></a>
+        <a href="unit3.html"><b>Unit 3 · Latency vs throughput</b><span>The second trade-off</span></a>
+      </div>
+      <p style="font-size:.85rem;color:var(--muted)">The video’s page could not be read in full (no transcript), so this guide takes nothing from it beyond its description: a lecture on Brewer’s theorem and the consistency–availability trade-off a distributed system must make.<a class="src" href="#s5">[5]</a></p>
+    </section>
+
+    <!-- ===================== 4.8 ===================== -->
+    <section id="sources">
+      <h2><span class="num">4.8</span>Sources</h2>
+      <ol class="sources">
+        <li id="s1">D. Martin et al., <a href="https://github.com/donnemartin/system-design-primer#availability-vs-consistency">The System Design Primer: Availability vs consistency</a>, GitHub.</li>
+        <li id="s2">R. Greiner, <a href="https://robertgreiner.com/cap-theorem-revisited/">CAP Theorem: Revisited</a>, 14 August 2014.</li>
+        <li id="s3">K. Sathupadi, <a href="http://ksat.me/a-plain-english-introduction-to-cap-theorem">A plain English introduction to CAP Theorem</a>, ksat.me.</li>
+        <li id="s4">H. Robinson, <a href="https://github.com/henryr/cap-faq">The CAP FAQ</a>, version 1.0, 9 May 2013.</li>
+        <li id="s5">Distributed Systems Course, <a href="https://www.youtube.com/watch?v=k-Yaq8AHlFA">L16: The CAP Theorem</a>, YouTube, 21 March 2019.</li>
+        <li id="s6">S. Gilbert and N. Lynch, <a href="https://users.ece.cmu.edu/~adrian/731-sp04/readings/GL-cap.pdf">Brewer’s conjecture and the feasibility of consistent, available, partition-tolerant web services</a>, 2002 (cited by [4]).</li>
+        <li id="s7">E. Brewer, <a href="http://www.cs.berkeley.edu/~brewer/cs262b-2004/PODC-keynote.pdf">Towards Robust Distributed Systems</a>, PODC keynote, 2000 (cited by [4]).</li>
+        <li id="s8">Wikipedia, <a href="https://en.wikipedia.org/wiki/Linearizability">Linearizability</a> (cited by [4]).</li>
+        <li id="s9">Wikipedia, <a href="https://en.wikipedia.org/wiki/Fallacies_of_distributed_computing">Fallacies of distributed computing</a>.</li>
+      </ol>
+    </section>
+  </main>
+</div>
+
+<aside class="note" id="notePanel" role="dialog" aria-labelledby="noteTitle" hidden>
+  <div class="note-head"><strong id="noteTitle">Key terms · Unit 4</strong><button id="noteClose" aria-label="Close key terms">×</button></div>
+  <h5>Setting</h5>
+  <dl>
+    <dt>Distributed system</dt><dd>Interconnected nodes that share data.</dd>
+    <dt>Node</dt><dd>One machine in that system.</dd>
+    <dt>Asynchronous network</dt><dd>No limit on message delay; failed and slow nodes look the same.</dd>
+  </dl>
+  <h5>CAP</h5>
+  <dl>
+    <dt>Consistency (C)</dt><dd>Every read gets the latest write, or an error.</dd>
+    <dt>Availability (A)</dt><dd>Every request gets a (non-error) response, maybe stale.</dd>
+    <dt>Partition tolerance (P)</dt><dd>Keeps working when the network loses messages between nodes.</dd>
+    <dt>Partition / total partition</dt><dd>Messages lost (not delayed) / no messages at all between two groups.</dd>
+    <dt>CAP theorem</dt><dd>If partitions are possible, you can’t always have both C and A.</dd>
+    <dt>Critical condition</dt><dd>The situation where C or A must give way.</dd>
+  </dl>
+  <h5>Precise terms</h5>
+  <dl>
+    <dt>Register</dt><dd>Storage with <code>set(X)</code> and <code>get()</code>; what CAP is about.</dd>
+    <dt>Atomic / linearizable</dt><dd>Looks like one machine serving operations in arrival order.</dd>
+    <dt>Serializable</dt><dd>Matches some serial order; weaker than atomic.</dd>
+    <dt>Eventual consistency</dt><dd>Writes become visible after a delay (Unit 5).</dd>
+  </dl>
+  <h5>Choices</h5>
+  <dl>
+    <dt>CP</dt><dd>Wait or error during a partition; for atomic reads/writes.</dd>
+    <dt>AP</dt><dd>Answer with possibly stale data, sync later; when staleness is OK.</dd>
+    <dt>CA</dt><dd>Not realistic for a distributed system.</dd>
+    <dt>FLP</dt><dd>Consensus is impossible in general in an async network with one failure.</dd>
+  </dl>
+</aside>
+
+<button class="fab" id="notesBtn" aria-label="Show key terms" aria-expanded="false" aria-controls="notePanel" title="Key terms">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M5 3h10l4 4v14H5z"/><path d="M15 3v4h4"/><path d="M8 11h8M8 15h8M8 19h5"/></svg>
+</button>
+<button class="fab hide" id="toTop" aria-label="Return to top" title="Return to top">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+</button>
+
+<script>
+(function(){
+  const links = Array.from(document.querySelectorAll('.toc a'));
+  const targets = links.map(a => document.getElementById(a.getAttribute('href').slice(1))).filter(Boolean);
+  const toc = document.getElementById('toc');
+  const toggle = document.getElementById('tocToggle');
+  const current = document.getElementById('tocCurrent');
+  const toTop = document.getElementById('toTop');
+  const mq = window.matchMedia('(max-width: 960px)');
+
+  function syncToc(){ if(!mq.matches){ toc.hidden = false; } else if(toggle.getAttribute('aria-expanded') !== 'true'){ toc.hidden = true; } }
+  syncToc(); mq.addEventListener ? mq.addEventListener('change', syncToc) : mq.addListener(syncToc);
+
+  toggle.addEventListener('click', () => {
+    const open = toggle.getAttribute('aria-expanded') === 'true';
+    toggle.setAttribute('aria-expanded', String(!open)); toc.hidden = open;
+  });
+  links.forEach(a => a.addEventListener('click', () => {
+    if(mq.matches){ toggle.setAttribute('aria-expanded','false'); toc.hidden = true; }
+  }));
+
+  function spy(){
+    const offset = mq.matches ? 90 : 40;
+    let idx = 0;
+    targets.forEach((t, i) => { if(t.getBoundingClientRect().top - offset <= 0) idx = i; });
+    if(window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) idx = targets.length - 1;
+    links.forEach(a => a.classList.remove('active','parent-active'));
+    const a = links[idx]; if(!a) return;
+    a.classList.add('active');
+    const parentLi = a.closest('ol').closest('li');
+    if(parentLi){ parentLi.querySelector(':scope > a').classList.add('parent-active'); }
+    current.textContent = a.textContent.replace(/^\d\.\d/, m => m + ' ');
+    if(!mq.matches){
+      const r = a.getBoundingClientRect(), rail = document.querySelector('.rail').getBoundingClientRect();
+      if(r.top < rail.top + 40 || r.bottom > rail.bottom - 40){ a.scrollIntoView({block:'nearest'}); }
+    }
+    toTop.classList.toggle('hide', window.scrollY < 500);
+  }
+  let ticking = false;
+  window.addEventListener('scroll', () => { if(!ticking){ requestAnimationFrame(() => { spy(); ticking = false; }); ticking = true; } }, {passive:true});
+  spy();
+
+  toTop.addEventListener('click', () => window.scrollTo({top:0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'}));
+
+  const panel = document.getElementById('notePanel'), btn = document.getElementById('notesBtn');
+  function setNote(open){ panel.hidden = !open; btn.setAttribute('aria-expanded', String(open)); }
+  btn.addEventListener('click', () => setNote(panel.hidden));
+  document.getElementById('noteClose').addEventListener('click', () => { setNote(false); btn.focus(); });
+  document.addEventListener('keydown', e => { if(e.key === 'Escape' && !panel.hidden){ setNote(false); btn.focus(); } });
+})();
+</script>
+
+</body>
+</html>
