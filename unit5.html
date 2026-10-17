@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Unit 5 · Consistency Patterns</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+img{max-width:100%}
+[hidden]{display:none!important}
+
+/* Layout: two-column study page — sticky, independently scrolling contents rail on the left; reading column on the right. Rail becomes a sticky top bar on small screens. */
+:root{
+  --bg:#F3F5F6; --surface:#FFFFFF; --ink:#17212B; --muted:#56636F; --line:#D5DCE1;
+  --accent:#0B6B75; --accent-soft:#DFEEEF; --warm:#A85A16; --warm-soft:#FAEEE0;
+  --code-bg:#EBF0F2; --good:#2E7D4F; --bad:#B23B3B;
+  --font:"IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --rail:270px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F1519; --surface:#151D23; --ink:#E2E8EC; --muted:#94A3AE; --line:#2A363F;
+  --accent:#55C2CA; --accent-soft:#123038; --warm:#E3A466; --warm-soft:#2D2218;
+  --code-bg:#1B252C; --good:#6FCB94; --bad:#EC8A8A; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F1519; --surface:#151D23; --ink:#E2E8EC; --muted:#94A3AE; --line:#2A363F;
+  --accent:#55C2CA; --accent-soft:#123038; --warm:#E3A466; --warm-soft:#2D2218;
+  --code-bg:#1B252C; --good:#6FCB94; --bad:#EC8A8A; color-scheme:dark}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.65;margin:0}
+a{color:var(--accent);text-underline-offset:2px}
+a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+code,kbd{font-family:var(--mono);font-size:.88em;background:var(--code-bg);padding:.08em .35em;border-radius:4px}
+
+.shell{display:grid;grid-template-columns:var(--rail) minmax(0,1fr);max-width:1240px;margin:0 auto;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));gap:40px}
+
+/* ---------- Contents rail ---------- */
+.rail{position:sticky;top:env(safe-area-inset-top, 0px);height:100vh;overflow-y:auto;padding-block:32px;
+  scrollbar-width:thin;overscroll-behavior:contain}
+.rail-head{display:flex;flex-direction:column;align-items:flex-start;gap:14px;position:sticky;top:-32px;z-index:2;background:var(--bg);padding-block:32px 4px;margin-top:-32px;margin-bottom:0}
+.back{display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:var(--ink);font-size:.85rem;font-weight:500;
+  border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 12px 6px 9px}
+.back:hover{border-color:var(--accent);color:var(--accent)}
+.rail h2{font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 12px;font-weight:600}
+.toc-toggle{display:none}
+.toc ol{list-style:none;margin:0;padding:0}
+.toc li{margin:0}
+.toc a{display:block;text-decoration:none;color:var(--muted);font-size:.9rem;line-height:1.35;padding:6px 10px;border-left:2px solid var(--line)}
+.toc a:hover{color:var(--ink)}
+.toc ol ol a{padding-left:24px;font-size:.84rem}
+.toc a.active{color:var(--accent);border-left-color:var(--accent);background:var(--accent-soft);font-weight:600}
+.toc a.parent-active{color:var(--ink);border-left-color:var(--accent)}
+.toc a{text-align:left;hyphens:none;scroll-margin-top:140px;scroll-margin-bottom:24px}
+.toc .num{font-family:var(--mono);font-size:.8em;margin-right:6px}
+
+/* ---------- Main ---------- */
+main{min-width:0;padding-block:40px 120px;max-width:780px}
+p,li,figcaption,.note p{text-align:justify;hyphens:auto;-webkit-hyphens:auto}
+header.unit{border-bottom:1px solid var(--line);padding-bottom:28px;margin-bottom:8px}
+.eyebrow{font-family:var(--mono);font-size:.8rem;color:var(--accent);letter-spacing:.06em;margin:0 0 8px;text-align:left}
+h1{font-size:clamp(1.9rem,4.4vw,2.6rem);line-height:1.15;margin:0 0 14px;font-weight:700;text-wrap:balance;letter-spacing:-.01em}
+h2{font-size:1.6rem;line-height:1.25;margin:64px 0 12px;text-wrap:balance;font-weight:700}
+h3{font-size:1.2rem;line-height:1.3;margin:44px 0 8px;text-wrap:balance;font-weight:600}
+h4{font-size:1rem;margin:26px 0 6px;font-weight:600}
+h2 .num,h3 .num{font-family:var(--mono);color:var(--accent);font-weight:500;margin-right:10px;font-size:.85em}
+.lede{font-size:1.08rem;color:var(--muted);margin:0}
+.meta{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:16px;font-size:.85rem;color:var(--muted)}
+.meta span{white-space:nowrap}
+ul,ol{padding-left:1.3em}
+li{margin:4px 0}
+.src{font-size:.72em;vertical-align:super;line-height:0;text-decoration:none;font-family:var(--mono);margin-left:1px}
+
+/* callouts */
+.callout{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:14px 18px;margin:20px 0}
+.callout.tip{border-left:4px solid var(--accent)}
+.callout.warn{border-left:4px solid var(--warm);background:var(--warm-soft)}
+.callout .label{display:block;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--muted);margin-bottom:4px;text-align:left}
+.callout p{margin:4px 0}
+
+.prosCons{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:16px 0}
+.prosCons div{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 16px;min-width:0}
+.prosCons h4{margin:4px 0;font-size:.85rem;letter-spacing:.06em;text-transform:uppercase}
+.prosCons .pro h4{color:var(--good)} .prosCons .con h4{color:var(--bad)}
+.prosCons ul{margin:4px 0;padding-left:1.1em}
+
+blockquote{margin:18px 0;padding:8px 18px;border-left:3px solid var(--warm);color:var(--ink);font-style:italic}
+blockquote cite{display:block;font-style:normal;font-size:.85rem;color:var(--muted);margin-top:4px}
+
+/* figures + tables */
+figure{margin:26px 0;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px}
+.figwrap{overflow-x:auto}
+figure svg{display:block;width:100%;height:auto;min-width:520px}
+figcaption{font-size:.88rem;color:var(--muted);margin-top:10px;border-top:1px dashed var(--line);padding-top:8px}
+figcaption b{color:var(--ink);font-family:var(--mono);font-weight:500;margin-right:4px}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem;min-width:520px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;font-size:.8rem;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+td code{white-space:nowrap}
+table.hist td code{white-space:normal;word-break:break-word}
+.tcap{caption-side:top;text-align:left;font-size:.88rem;color:var(--muted);padding-bottom:8px}
+.tcap b{color:var(--ink);font-family:var(--mono);font-weight:500;margin-right:4px}
+
+table.tt td[colspan],table.tt td.g,table.tt td.o,table.tt td.b{text-align:center;font-weight:500}
+table.tt td.g{background:color-mix(in srgb, var(--good) 18%, transparent)}
+table.tt td.o{background:color-mix(in srgb, #D9B300 22%, transparent)}
+table.tt td.b{background:color-mix(in srgb, var(--bad) 18%, transparent)}
+table.tt{table-layout:fixed}
+table.tt th:first-child,table.tt td:first-child{width:18%}
+table.tt th,table.tt td{border:1px solid var(--line)}
+table.tt th:not(:first-child){text-align:center}
+/* svg tokens */
+.s-box{fill:var(--surface);stroke:var(--line);stroke-width:1.5}
+.s-acc{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5}
+.s-warm{fill:var(--warm-soft);stroke:var(--warm);stroke-width:1.5}
+.s-line{stroke:var(--muted);stroke-width:1.5;fill:none}
+.s-dash{stroke:var(--muted);stroke-width:1.3;fill:none;stroke-dasharray:5 4}
+.s-t{fill:var(--ink);font-family:var(--font);font-size:13px}
+.s-tb{fill:var(--ink);font-family:var(--font);font-size:13px;font-weight:600}
+.s-ts{fill:var(--muted);font-family:var(--font);font-size:11px}
+.s-tm{fill:var(--muted);font-family:var(--mono);font-size:11px}
+.s-dot{fill:var(--accent)} .s-dot2{fill:var(--warm)}
+.s-arrow{fill:var(--muted)}
+@media (prefers-reduced-motion: reduce){.anim{display:none}}
+
+/* resource cards */
+.res{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:16px 0}
+.res a{display:block;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:12px 14px;text-decoration:none;color:var(--ink);min-width:0}
+.res a:hover{border-color:var(--accent)}
+.res b{display:block;font-size:.95rem}
+.res span{display:block;font-size:.82rem;color:var(--muted);margin-top:2px}
+ol.sources{font-size:.88rem;padding-left:2.2em}
+ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
+
+/* floating buttons */
+.fab{position:fixed;right:calc(18px + env(safe-area-inset-right, 0px));width:46px;height:46px;border-radius:50%;
+  border:1px solid var(--line);background:var(--surface);color:var(--ink);display:grid;place-items:center;cursor:pointer;
+  box-shadow:0 4px 14px rgba(0,0,0,.12);z-index:40;transition:opacity .2s, transform .2s}
+.fab svg{width:20px;height:20px}
+#toTop{bottom:calc(18px + env(safe-area-inset-bottom, 0px))}
+#notesBtn{bottom:calc(74px + env(safe-area-inset-bottom, 0px));background:var(--warm-soft);border-color:var(--warm);color:var(--warm)}
+#toTop.hide{opacity:0;pointer-events:none;transform:translateY(8px)}
+
+/* key-terms note widget */
+.note{position:fixed;right:calc(18px + env(safe-area-inset-right, 0px));bottom:calc(130px + env(safe-area-inset-bottom, 0px));
+  width:min(380px,calc(100vw - 36px));max-height:min(70vh,620px);overflow:auto;z-index:45;
+  background:var(--warm-soft);border:1px solid var(--warm);border-radius:12px;padding:0 18px 16px;
+  box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.note-head{position:sticky;top:0;background:var(--warm-soft);display:flex;justify-content:space-between;align-items:center;padding:14px 0 8px;border-bottom:1px dashed var(--warm)}
+.note-head strong{font-size:.95rem}
+.note-head button{border:0;background:none;color:var(--ink);font-size:1.3rem;cursor:pointer;line-height:1;padding:4px 8px}
+.note dl{margin:8px 0 0}
+.note dt{font-weight:600;font-size:.9rem;margin-top:10px}
+.note dd{margin:2px 0 0;font-size:.85rem;color:var(--ink);text-align:justify;hyphens:auto}
+.note h5{font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--warm);margin:16px 0 0}
+
+/* ---------- small screens ---------- */
+@media (max-width: 960px){
+  .shell{display:block}
+  body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top, 0px);z-index:31;background:var(--surface)}
+  .rail{position:sticky;top:env(safe-area-inset-top, 0px);z-index:30;height:auto;max-height:none;overflow:visible;
+    background:var(--surface);border-bottom:1px solid var(--line);padding:0;
+    margin-left:calc(-1 * max(16px, env(safe-area-inset-left, 0px)));margin-right:calc(-1 * max(16px, env(safe-area-inset-right, 0px)));
+    padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+  .rail-head{position:static;flex-direction:row;align-items:center;justify-content:space-between;padding-block:10px;margin-top:0;background:transparent}
+  .rail h2{display:none}
+  .toc-toggle{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);
+    border-radius:8px;padding:6px 10px;font:500 .85rem var(--font);cursor:pointer;min-width:0;max-width:72%}
+  .toc-toggle span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .toc{max-height:60vh;overflow-y:auto;padding-bottom:12px}
+  .toc[hidden]{display:none!important}
+  html{scroll-padding-top:70px}
+  main{padding-top:24px}
+}
+@media (min-width: 961px){ .toc[hidden]{display:block!important} }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <aside class="rail" aria-label="Contents">
+    <div class="rail-head">
+      <a class="back" href="index.html" title="Back to all units"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>All units</a>
+      <h2>Contents</h2>
+      <button class="toc-toggle" id="tocToggle" aria-expanded="false" aria-controls="toc">
+        <span id="tocCurrent">Contents</span>
+        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.6" fill="none"/></svg>
+      </button>
+    </div>
+    <nav class="toc" id="toc" hidden>
+      <ol>
+        <li><a href="#problem"><span class="num">5.1</span>The problem: many copies</a>
+          <ol>
+            <li><a href="#replication">Sync vs async replication</a></li>
+          </ol>
+        </li>
+        <li><a href="#weak"><span class="num">5.2</span>Weak consistency</a></li>
+        <li><a href="#eventual"><span class="num">5.3</span>Eventual consistency</a></li>
+        <li><a href="#strong"><span class="num">5.4</span>Strong consistency</a>
+          <ol>
+            <li><a href="#transactions">Why transactions need it</a></li>
+          </ol>
+        </li>
+        <li><a href="#compare"><span class="num">5.5</span>The three side by side</a></li>
+        <li><a href="#datacenters"><span class="num">5.6</span>Across datacenters</a>
+          <ol>
+            <li><a href="#why-dc">Why (and why not)</a></li>
+            <li><a href="#multihoming">Multihoming options</a></li>
+            <li><a href="#techniques">Techniques and trade-offs</a></li>
+            <li><a href="#conclusions">Barrett’s conclusions</a></li>
+          </ol>
+        </li>
+        <li><a href="#further"><span class="num">5.7</span>Going further</a></li>
+        <li><a href="#resources"><span class="num">5.8</span>Resources</a></li>
+        <li><a href="#sources"><span class="num">5.9</span>Sources</a></li>
+      </ol>
+    </nav>
+  </aside>
+
+  <main id="top">
+    <header class="unit">
+      <p class="eyebrow">SYSTEM DESIGN PRIMER · UNIT 5</p>
+      <h1>Consistency patterns</h1>
+      <p class="lede">Unit 4 showed that a distributed system must sometimes trade consistency for availability. This unit names the levels of consistency you can choose from: weak, eventual and strong. Each answers one question: after a write, will a read see it?<a class="src" href="#s1">[1]</a></p>
+      <div class="meta"><span>Primer section · Consistency patterns</span><span>Ryan Barrett · “Transactions Across Datacenters”, Google I/O 2009 (slides + talk)</span><span>Werner Vogels · “Eventually Consistent” (2009)</span></div>
+    </header>
+
+    <!-- ===================== 5.1 ===================== -->
+    <section id="problem">
+      <h2><span class="num">5.1</span>The problem: many copies</h2>
+      <p>Once the same data is stored on several machines (<b>replicas</b>), you must decide how to <b>synchronize</b> them so that clients get a consistent view of the data.<a class="src" href="#s1">[1]</a> The primer measures every option against the definition of <b>consistency</b> from the CAP theorem (Unit 4): <i>every read receives the most recent write or an error</i>.<a class="src" href="#s1">[1]</a></p>
+      <p>The three patterns differ in how much of that promise they keep. The deciding factor is how a write travels from one replica to the others, which is the job of <b>replication</b>.</p>
+
+      <h3 id="replication">Synchronous vs asynchronous replication</h3>
+      <p>The primer ties eventual consistency to <b>asynchronous</b> replication and strong consistency to <b>synchronous</b> replication.<a class="src" href="#s1">[1]</a> The difference is <i>when the writer is told “done”</i>:</p>
+      <ul>
+        <li><b>Synchronous</b>: the write is copied to the other replicas <i>before</i> it is acknowledged. Every replica has it once the client hears “done”, so reads anywhere see it. The client waits longer.</li>
+        <li><b>Asynchronous</b>: the write is acknowledged as soon as one replica has it, and copied to the others <i>afterwards</i>. The client gets a fast answer, but other replicas lag behind for a while.</li>
+      </ul>
+      <figure>
+        <div class="figwrap">
+          <svg viewBox="0 0 640 300" role="img" aria-labelledby="f1t">
+            <title id="f1t">Two timelines. Synchronous: the client writes to replica 1, which copies to replica 2 and waits for its acknowledgement before replying OK. Asynchronous: replica 1 replies OK immediately and copies to replica 2 afterwards.</title>
+            <defs><marker id="ah1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="s-arrow"/></marker></defs>
+            <!-- Sync -->
+            <text x="160" y="20" text-anchor="middle" class="s-tb" style="fill:var(--accent)">Synchronous</text>
+            <text x="60" y="46" text-anchor="middle" class="s-ts">Client</text>
+            <text x="160" y="46" text-anchor="middle" class="s-ts">Replica 1</text>
+            <text x="260" y="46" text-anchor="middle" class="s-ts">Replica 2</text>
+            <line x1="60" y1="54" x2="60" y2="226" class="s-dash"/>
+            <line x1="160" y1="54" x2="160" y2="226" class="s-dash"/>
+            <line x1="260" y1="54" x2="260" y2="226" class="s-dash"/>
+            <line x1="60" y1="74" x2="156" y2="94" class="s-line" marker-end="url(#ah1)"/><text x="100" y="76" class="s-tm" text-anchor="middle">write</text>
+            <line x1="160" y1="100" x2="256" y2="124" class="s-line" marker-end="url(#ah1)"/><text x="215" y="102" class="s-tm" text-anchor="middle">copy</text>
+            <line x1="260" y1="140" x2="164" y2="164" class="s-line" marker-end="url(#ah1)"/><text x="215" y="170" class="s-tm" text-anchor="middle">ack</text>
+            <line x1="160" y1="180" x2="64" y2="204" stroke="var(--good)" stroke-width="2" fill="none" marker-end="url(#ah1)"/><text x="104" y="214" class="s-tb" text-anchor="middle" style="fill:var(--good)">OK</text>
+            <rect x="24" y="74" width="10" height="130" fill="var(--warm)" fill-opacity=".35"/>
+            <text x="24" y="254" class="s-ts" style="fill:var(--warm)">client waits</text>
+            <text x="24" y="268" class="s-ts" style="fill:var(--warm)">for both replicas</text>
+            <g class="anim"><circle r="5" class="s-dot"><animateMotion dur="4s" repeatCount="indefinite" path="M60,74 L156,94 L160,100 L256,124 L260,140 L164,164 L160,180 L64,204"/></circle></g>
+            <!-- Async -->
+            <text x="480" y="20" text-anchor="middle" class="s-tb" style="fill:var(--warm)">Asynchronous</text>
+            <text x="380" y="46" text-anchor="middle" class="s-ts">Client</text>
+            <text x="480" y="46" text-anchor="middle" class="s-ts">Replica 1</text>
+            <text x="580" y="46" text-anchor="middle" class="s-ts">Replica 2</text>
+            <line x1="380" y1="54" x2="380" y2="226" class="s-dash"/>
+            <line x1="480" y1="54" x2="480" y2="226" class="s-dash"/>
+            <line x1="580" y1="54" x2="580" y2="226" class="s-dash"/>
+            <line x1="380" y1="74" x2="476" y2="94" class="s-line" marker-end="url(#ah1)"/><text x="420" y="76" class="s-tm" text-anchor="middle">write</text>
+            <line x1="480" y1="100" x2="384" y2="124" stroke="var(--good)" stroke-width="2" fill="none" marker-end="url(#ah1)"/><text x="424" y="134" class="s-tb" text-anchor="middle" style="fill:var(--good)">OK</text>
+            <line x1="480" y1="150" x2="576" y2="214" class="s-line" marker-end="url(#ah1)"/><text x="530" y="146" class="s-tm" text-anchor="middle">copy, later</text>
+            <rect x="590" y="100" width="10" height="116" fill="var(--warm)" fill-opacity=".35"/>
+            <text x="600" y="254" class="s-ts" text-anchor="end" style="fill:var(--warm)">replica 2 is stale</text>
+            <text x="600" y="268" class="s-ts" text-anchor="end" style="fill:var(--warm)">until the copy lands</text>
+            <g class="anim"><circle r="5" class="s-dot2"><animateMotion dur="4s" repeatCount="indefinite" path="M380,74 L476,94 L480,100 L384,124 M480,150 L576,214"/></circle></g>
+          </svg>
+        </div>
+        <figcaption><b>Figure 5.1</b> When the “OK” is sent decides the consistency level. Synchronous replication (left) underlies strong consistency; asynchronous replication (right) underlies eventual consistency.<a class="src" href="#s1">[1]</a> Barrett notes master/slave replication is “usually asynchronous”, which is why it is good for throughput and latency.<a class="src" href="#s2">[2]</a> Drawing is illustrative.</figcaption>
+      </figure>
+    </section>
+
+    <!-- ===================== 5.2 ===================== -->
+    <section id="weak">
+      <h2><span class="num">5.2</span>Weak consistency</h2>
+      <p><b>After a write, reads may or may not see it.</b> The system takes a <b>best effort</b> approach: it tries to deliver the data but makes no promise.<a class="src" href="#s1">[1]</a> Barrett’s image for this is a “message in a bottle”.<a class="src" href="#s2">[2]</a></p>
+      <p>It is seen in caches such as <b>memcached</b>, and works well for <b>real-time</b> uses such as VoIP, video chat and real-time multiplayer games.<a class="src" href="#s1">[1]</a> The primer’s example: if you lose reception for a few seconds during a phone call, you don’t hear what was said while you were cut off when the connection returns.<a class="src" href="#s1">[1]</a> In real time, old data is useless, so there is no point in recovering it.</p>
+      <p>Barrett calls weak consistency “what you get from caches”: you put something in, and later it may or may not be there, since a busy cache keeps evicting entries. In a game you care where the other player is now, not 30 seconds ago. It is the right trade-off for those cases, but for persistent data storage it is too weak.<a class="src" href="#s3">[3]</a></p>
+      <div class="callout tip"><span class="label">Connection to other units</span><p>The same real-time examples appear in the primer’s case for <b>UDP</b>, which suits uses where late data is worse than lost data.<a class="src" href="#s5">[5]</a> A cache such as memcached is a copy of data that may simply not hold the latest value.</p></div>
+    </section>
+
+    <!-- ===================== 5.3 ===================== -->
+    <section id="eventual">
+      <h2><span class="num">5.3</span>Eventual consistency</h2>
+      <p><b>After a write, reads will eventually see it</b>, typically within milliseconds. Data is <b>replicated asynchronously</b>.<a class="src" href="#s1">[1]</a></p>
+      <p>It is seen in <b>DNS</b> and <b>email</b>, and works well in <b>highly available</b> systems.<a class="src" href="#s1">[1]</a> Barrett adds search-engine indexing, SMTP, snail mail, Amazon S3 and SimpleDB, and App Engine’s mail service.<a class="src" href="#s2">[2]</a> As an example of the delay, he estimated that SimpleDB writes became visible after about 400–500 ms on average in 2009, sometimes a few seconds.<a class="src" href="#s3">[3]</a> It is the pattern an <b>AP</b> system falls back on during a partition (Unit 4), and the “E” in BASE, which most NoSQL stores favour (Unit 12).<a class="src" href="#s5">[5]</a></p>
+      <h4>The inconsistency window</h4>
+      <p>Vogels names the gap between a write and the moment <i>every</i> reader is guaranteed to see it the <b>inconsistency window</b>. Without failures, its maximum size depends on communication delays, system load and the number of replicas. DNS is his standard example: an updated name spreads according to a configured pattern, combined with caches that expire after a time limit, until all clients see it.<a class="src" href="#s4">[4]</a></p>
+      <figure>
+        <div class="figwrap">
+          <svg viewBox="0 0 680 250" role="img" aria-labelledby="f2t">
+            <title id="f2t">Timeline of one write at t0. Under strong consistency every later read returns the new value. Under eventual consistency reads return the old value until the inconsistency window closes, then the new value. Under weak consistency each read may or may not return the new value, with no guarantee.</title>
+            <defs><marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="s-arrow"/></marker></defs>
+            <line x1="120" y1="216" x2="620" y2="216" class="s-line" marker-end="url(#ah2)"/>
+            <text x="616" y="236" text-anchor="end" class="s-ts">time →</text>
+            <line x1="150" y1="30" x2="150" y2="222" stroke="var(--accent)" stroke-width="2"/>
+            <text x="150" y="240" text-anchor="middle" class="s-tm" style="fill:var(--accent)">t₀ write x = 2</text>
+            <text x="16" y="64" class="s-tb">Strong</text>
+            <text x="16" y="124" class="s-tb">Eventual</text>
+            <text x="16" y="184" class="s-tb">Weak</text>
+            <!-- strong -->
+            <g>
+              <circle cx="210" cy="60" r="13" fill="var(--good)" fill-opacity=".2" stroke="var(--good)"/><text x="210" y="65" text-anchor="middle" class="s-tb" style="font-size:12px">2</text>
+              <circle cx="300" cy="60" r="13" fill="var(--good)" fill-opacity=".2" stroke="var(--good)"/><text x="300" y="65" text-anchor="middle" class="s-tb" style="font-size:12px">2</text>
+              <circle cx="420" cy="60" r="13" fill="var(--good)" fill-opacity=".2" stroke="var(--good)"/><text x="420" y="65" text-anchor="middle" class="s-tb" style="font-size:12px">2</text>
+              <circle cx="560" cy="60" r="13" fill="var(--good)" fill-opacity=".2" stroke="var(--good)"/><text x="560" y="65" text-anchor="middle" class="s-tb" style="font-size:12px">2</text>
+            </g>
+            <!-- eventual -->
+            <rect x="150" y="100" width="230" height="40" fill="var(--warm)" fill-opacity=".15" stroke="var(--warm)" stroke-dasharray="4 3"/>
+            <text x="265" y="94" text-anchor="middle" class="s-ts" style="fill:var(--warm)">inconsistency window</text>
+            <circle cx="210" cy="120" r="13" fill="var(--bad)" fill-opacity=".18" stroke="var(--bad)"/><text x="210" y="125" text-anchor="middle" class="s-tb" style="font-size:12px">1</text>
+            <circle cx="300" cy="120" r="13" fill="var(--bad)" fill-opacity=".18" stroke="var(--bad)"/><text x="300" y="125" text-anchor="middle" class="s-tb" style="font-size:12px">1</text>
+            <circle cx="420" cy="120" r="13" fill="var(--good)" fill-opacity=".2" stroke="var(--good)"/><text x="420" y="125" text-anchor="middle" class="s-tb" style="font-size:12px">2</text>
+            <circle cx="560" cy="120" r="13" fill="var(--good)" fill-opacity=".2" stroke="var(--good)"/><text x="560" y="125" text-anchor="middle" class="s-tb" style="font-size:12px">2</text>
+            <!-- weak -->
+            <circle cx="210" cy="180" r="13" fill="var(--bad)" fill-opacity=".18" stroke="var(--bad)"/><text x="210" y="185" text-anchor="middle" class="s-tb" style="font-size:12px">1</text>
+            <circle cx="300" cy="180" r="13" fill="var(--good)" fill-opacity=".2" stroke="var(--good)"/><text x="300" y="185" text-anchor="middle" class="s-tb" style="font-size:12px">2</text>
+            <circle cx="420" cy="180" r="13" fill="var(--bad)" fill-opacity=".18" stroke="var(--bad)"/><text x="420" y="185" text-anchor="middle" class="s-tb" style="font-size:12px">?</text>
+            <circle cx="560" cy="180" r="13" fill="var(--bad)" fill-opacity=".18" stroke="var(--bad)"/><text x="560" y="185" text-anchor="middle" class="s-tb" style="font-size:12px">?</text>
+            <text x="600" y="185" class="s-ts">no promise</text>
+          </svg>
+        </div>
+        <figcaption><b>Figure 5.2</b> What reads return after one write of <code>x = 2</code> (old value <code>1</code>), under each pattern. Circles are reads at different times; green = new value, red = old or unknown. Strong: always sees it. Eventual: sees it once the inconsistency window closes.<a class="src" href="#s4">[4]</a> Weak: may or may not.<a class="src" href="#s1">[1]</a> Timings are illustrative.</figcaption>
+      </figure>
+      <div class="callout warn"><span class="label">A naming difference</span><p>The primer lists weak and eventual as separate levels.<a class="src" href="#s1">[1]</a> Vogels treats eventual consistency as a <i>specific form</i> of weak consistency: one that promises all reads return the last value <i>if no new updates are made</i>.<a class="src" href="#s4">[4]</a> Both agree on the key difference: eventual consistency guarantees convergence; plain weak consistency does not.</p></div>
+    </section>
+
+    <!-- ===================== 5.4 ===================== -->
+    <section id="strong">
+      <h2><span class="num">5.4</span>Strong consistency</h2>
+      <p><b>After a write, reads will see it.</b> Data is <b>replicated synchronously</b>.<a class="src" href="#s1">[1]</a> This matches the CAP definition of consistency, and is what a <b>CP</b> system protects during a partition (Unit 4).</p>
+      <p>It is seen in <b>file systems</b> and <b>RDBMSes</b>, and works well in systems that need <b>transactions</b>.<a class="src" href="#s1">[1]</a> Barrett adds the App Engine datastore and Azure tables.<a class="src" href="#s2">[2]</a> Barrett calls it the ideal for read-write data, because it is the simplest model to think about and program against.<a class="src" href="#s3">[3]</a> The cost is the waiting shown in Figure 5.1: every write pays for the slowest replica it must reach.</p>
+
+      <h3 id="transactions">Why transactions need it</h3>
+      <p>A <b>transaction</b> groups operations that must succeed or fail together. Barrett’s example is a money transfer from A to B: subtract from A, then add to B. If another transaction touches A or B in between, or the thread running it dies halfway (a crash, or hitting a request deadline), money can vanish or appear.<a class="src" href="#s2">[2]</a><a class="src" href="#s3">[3]</a> Transactions exist for <b>correctness</b>: to enforce <b>invariants</b> (rules that must always hold, such as “the total amount of money is unchanged”), the <b>ACID</b> guarantees.<a class="src" href="#s2">[2]</a> ACID is covered under RDBMS in Unit 12: atomicity, consistency, isolation, durability.<a class="src" href="#s5">[5]</a></p>
+      <div class="callout tip"><span class="label">Two meanings of “consistency”</span><p>The <b>C in CAP</b> (and this unit) is about replicas agreeing: a read sees the latest write. The <b>C in ACID</b> is about a transaction moving the database from one valid state to another.<a class="src" href="#s5">[5]</a> Barrett’s slide lists both under “why transactions”, since a transaction across replicas needs both.<a class="src" href="#s2">[2]</a></p></div>
+    </section>
+
+    <!-- ===================== 5.5 ===================== -->
+    <section id="compare">
+      <h2><span class="num">5.5</span>The three side by side</h2>
+      <div class="tablewrap">
+        <table>
+          <caption class="tcap"><b>Table 5.1</b> Consistency patterns compared</caption>
+          <thead><tr><th></th><th>Weak</th><th>Eventual</th><th>Strong</th></tr></thead>
+          <tbody>
+            <tr><td><b>After a write, reads…</b></td><td>may or may not see it</td><td>will eventually see it (typically ms)</td><td>will see it</td></tr>
+            <tr><td><b>Replication</b></td><td>Best effort</td><td>Asynchronous</td><td>Synchronous</td></tr>
+            <tr><td><b>Good for</b></td><td>Real-time use cases</td><td>Highly available systems</td><td>Systems that need transactions</td></tr>
+            <tr><td><b>Primer examples</b></td><td>memcached, VoIP, video chat, multiplayer games</td><td>DNS, email</td><td>File systems, RDBMSes</td></tr>
+            <tr><td><b>Barrett adds</b></td><td>App Engine memcache, live online video</td><td>Search indexing, SMTP, S3, SimpleDB</td><td>App Engine datastore, Azure tables</td></tr>
+            <tr><td><b>CAP link</b></td><td>—</td><td>AP systems</td><td>CP systems</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:.85rem;color:var(--muted)">Rows 1–4 from the primer;<a class="src" href="#s1">[1]</a> row 5 from Barrett’s slides;<a class="src" href="#s2">[2]</a> row 6 from Unit 4’s primer section.<a class="src" href="#s5">[5]</a></p>
+      <div class="callout warn"><span class="label">In an interview</span><p>Name the level per piece of data, not per system. Ask: what goes wrong if a user reads an old value here? If nothing much (a feed, a view count), eventual is enough and buys availability. If money or invariants are involved, you need strong consistency and should accept the latency.</p></div>
+    </section>
+
+    <!-- ===================== 5.6 ===================== -->
+    <section id="datacenters">
+      <h2><span class="num">5.6</span>Across datacenters</h2>
+      <p>The primer’s one source for this section is Ryan Barrett’s Google I/O 2009 talk, based on his work on the App Engine datastore. It starts from the three consistency levels and asks how to keep data consistent when copies live in <b>different datacenters</b>.<a class="src" href="#s2">[2]</a><a class="src" href="#s3">[3]</a> He focuses on <b>structured user data</b>: data that users both write and read, and whose writes they expect to see. He considers it the hardest kind of data to run across datacenters.<a class="src" href="#s3">[3]</a></p>
+      <div class="callout tip"><span class="label">CAP is not black and white</span><p>Barrett opens with Brewer’s CAP theorem, but adds that you don’t simply get two of three: often you can get a little of one and a little more of another.<a class="src" href="#s3">[3]</a></p></div>
+
+      <h3 id="why-dc">Why (and why not)</h3>
+      <p><b>Why</b> spread data across datacenters: catastrophic failures, expected failures, routine maintenance, and <b>geolocality</b> (serving users from nearby, as CDNs and edge caches do).<a class="src" href="#s2">[2]</a> <b>Why not</b>: the network between datacenters is far worse than the network inside one.</p>
+      <div class="tablewrap">
+        <table>
+          <caption class="tcap"><b>Table 5.2</b> Network inside vs between datacenters (Barrett, 2009)</caption>
+          <thead><tr><th></th><th>Within a datacenter</th><th>Between datacenters</th></tr></thead>
+          <tbody>
+            <tr><td><b>Bandwidth</b></td><td>High: 1–100 Gbps interconnects</td><td>Low: 10 Mbps–1 Gbps</td></tr>
+            <tr><td><b>Latency</b></td><td>&lt; 1 ms within a rack, 1–5 ms across</td><td>50–150 ms</td></tr>
+            <tr><td><b>Cost</b></td><td>Little to none</td><td>Expensive (fibre)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>For scale: a round trip between the US west and east coasts takes about 30 ms from the speed of light alone, and busy internet peering points can add another 30–50 ms.<a class="src" href="#s3">[3]</a> That latency is the price of synchronous replication: a strongly consistent write that must reach another datacenter waits for it, often twice.</p>
+      <p>Accepting writes in more than one place also creates inconsistency. Barrett’s example: Alice sends money to Bob in one datacenter and to Eve in another, but only has enough for one. If both are accepted and reconciled later, money has been created.<a class="src" href="#s3">[3]</a></p>
+
+      <h3 id="multihoming">Multihoming options</h3>
+      <p><b>Multihoming</b> means serving from several datacenters. Barrett calls it hard, harder if it must be consistent, and hardest with real-time writes. He gives three options:<a class="src" href="#s2">[2]</a></p>
+      <div class="tablewrap">
+        <table>
+          <caption class="tcap"><b>Table 5.3</b> Barrett’s three multihoming options</caption>
+          <thead><tr><th>Option</th><th>How</th><th>Weakness</th><th>Examples (2009)</th></tr></thead>
+          <tbody>
+            <tr><td><b>1. Don’t (“bunkerize”)</b></td><td>One datacenter; the most common choice</td><td>Bad at catastrophic failure (large-scale data loss); no geolocation for serving</td><td>Azure tables, SimpleDB</td></tr>
+            <tr><td><b>2. Primary with hot failover(s)</b></td><td>One primary; standbys take over on failure</td><td>Window of lost data; failover data may be inconsistent; reads can be geolocated, writes can’t</td><td>AWS (pick US or EU), banks, brokerages</td></tr>
+            <tr><td><b>3. True multihoming</b></td><td>Simultaneous writes in different datacenters</td><td>Paid for in latency; two-way is hard, N-way harder</td><td>—</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:.85rem;color:var(--muted)">From the slides.<a class="src" href="#s2">[2]</a> “Hot failover” is the active-passive fail-over of Unit 6.</p>
+      <ul>
+        <li><b>Bunkerizing</b> means making one site as redundant as possible: several power sources, several network providers, backup cooling. It still fails sometimes. In 2009 the SVColo datacenter lost power for about 2–2.5 hours, taking down Twitter and FriendFeed, which were both hosted only there. Barrett adds that human error, someone pressing the wrong button, causes many outages.<a class="src" href="#s3">[3]</a></li>
+        <li><b>Primary with hot failover</b> works like MySQL master-slave replication: one datacenter takes writes and the others can serve reads. Because copying is asynchronous, data still “on the wire” when the primary fails is unavailable, or lost if the failure is destructive.<a class="src" href="#s3">[3]</a></li>
+        <li><b>True multihoming</b> is the “holy grail”: every datacenter serves reads and writes, consistently, with working transactions.<a class="src" href="#s3">[3]</a></li>
+      </ul>
+      <div class="callout tip"><span class="label">Story · NASDAQ’s 27 miles of fibre</span><p>Barrett tells a story he says may be an urban myth. NASDAQ ran two datacenters near each other and used two-phase commit across them, so every trade was stored in both or neither. When buying network equipment, its engineers arrived with suitcases of fibre exactly as long as the 27 miles between the sites, and only bought gear that kept round trips within a window of about 2–3 ms.<a class="src" href="#s3">[3]</a> Strong consistency across sites is possible, but distance is the limit.</p></div>
+
+      <h3 id="techniques">Techniques and trade-offs</h3>
+      <p>Barrett then compares five ways of keeping copies in sync, from crudest to most rigorous:<a class="src" href="#s2">[2]</a></p>
+      <ul>
+        <li><b>Backups</b>: make a copy (“sledgehammer”). Weak consistency, usually no transactions.<a class="src" href="#s2">[2]</a> A backup that reads data from start to end over hours sees different moments: if money moves from A to B after A is copied but before B is, the backup breaks the transaction. It runs offline, so it doesn’t slow the live system, but everything since the last backup can be lost, and moving datacenters means backup, restore and downtime.<a class="src" href="#s3">[3]</a></li>
+        <li><b>Master/slave (M/S) replication</b>: usually asynchronous, good for throughput and latency; used by most RDBMSes (e.g. MySQL binary logs). Weak/eventual consistency. Detailed in Unit 12.<a class="src" href="#s2">[2]</a> Latency and throughput stay as before, only the small unreplicated window is lost, and on failover replicas serve reads only until a new master is set up. Getting consistent, transaction-safe replicas takes deliberate design.<a class="src" href="#s3">[3]</a></li>
+        <li><b>Multi-master (MM) replication</b>: merging concurrent writes made at several places. Asynchronous, eventually consistent. It needs a <b>serialization protocol</b> to order writes, such as a <b>timestamp oracle</b> handing out ever-increasing timestamps, which is either a single point of failure or itself needs a consensus protocol. No global transactions.<a class="src" href="#s2">[2]</a> Barrett explains that there is no usable global clock, so the order must be made up. Besides a timestamp oracle, options are local timestamps with clock-skew detection, per-object version numbers, or a consensus protocol. He likens it to multithreading where the locks are taken after the fact. The upside: on failover every datacenter can keep taking writes.<a class="src" href="#s3">[3]</a></li>
+        <li><b>Two-phase commit (2PC)</b>: a semi-distributed <b>consensus protocol</b> (a way for nodes to agree) with one coordinator. Heavyweight, synchronous, high latency. <b>3PC</b> adds a round trip to make it asynchronous.<a class="src" href="#s2">[2]</a> Each transaction’s coordinator is one participant; with only a few datacenters the same ones keep coordinating, and transactions through a coordinator are serialized, which hurts throughput. It is the first true multihoming technique here: a write is stored in all datacenters or none, so nothing acknowledged is lost. For failover you run at least <b>N + 1</b> datacenters, so one can go down while N keep serving.<a class="src" href="#s3">[3]</a></li>
+        <li><b>Paxos</b>: a fully distributed consensus protocol. A write succeeds once a <b>majority</b> accepts it, so it survives a minority of nodes failing. Similar to 2PC/3PC and lighter, but still high latency.<a class="src" href="#s2">[2]</a> There is no master per transaction, so many Paxos rounds can run in parallel, giving better throughput than 2PC. Both still need two round trips between datacenters before confirming a write: around 100–250 ms depending on distance.<a class="src" href="#s3">[3]</a></li>
+      </ul>
+      <figure>
+        <div class="figwrap">
+          <svg viewBox="0 0 640 230" role="img" aria-labelledby="f3t">
+            <title id="f3t">Two-phase commit. A coordinator proposes a change to three participants, each votes yes, and the coordinator then sends commit to all. If any vote is no, it sends abort.</title>
+            <defs><marker id="ah3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="s-arrow"/></marker></defs>
+            <rect x="20" y="88" width="120" height="54" rx="10" class="s-acc"/><text x="80" y="112" text-anchor="middle" class="s-tb">Coordinator</text><text x="80" y="130" text-anchor="middle" class="s-tm">datacenter A</text>
+            <rect x="500" y="16" width="120" height="44" rx="8" class="s-box"/><text x="560" y="43" text-anchor="middle" class="s-tb">Participant 1</text>
+            <rect x="500" y="93" width="120" height="44" rx="8" class="s-box"/><text x="560" y="120" text-anchor="middle" class="s-tb">Participant 2</text>
+            <rect x="500" y="170" width="120" height="44" rx="8" class="s-box"/><text x="560" y="197" text-anchor="middle" class="s-tb">Participant 3</text>
+            <rect x="196" y="20" width="96" height="26" rx="13" class="s-warm"/><text x="244" y="38" text-anchor="middle" class="s-tb">1 · propose</text>
+            <rect x="300" y="82" width="96" height="26" rx="13" class="s-warm"/><text x="348" y="100" text-anchor="middle" class="s-tb">2 · vote</text>
+            <rect x="196" y="184" width="132" height="26" rx="13" class="s-acc"/><text x="262" y="202" text-anchor="middle" class="s-tb">3 · commit/abort</text>
+            <line x1="140" y1="104" x2="496" y2="38" class="s-dash"/>
+            <line x1="140" y1="115" x2="496" y2="115" class="s-dash"/>
+            <line x1="140" y1="126" x2="496" y2="192" class="s-dash"/>
+            <g class="anim">
+              <circle r="5" class="s-dot2"><animateMotion dur="4.5s" repeatCount="indefinite" keyPoints="0;1;0;0;1" keyTimes="0;.3;.6;.7;1" calcMode="linear" path="M140,104 L496,38"/></circle>
+              <circle r="5" class="s-dot2"><animateMotion dur="4.5s" repeatCount="indefinite" keyPoints="0;1;0;0;1" keyTimes="0;.3;.6;.7;1" calcMode="linear" path="M140,115 L496,115"/></circle>
+              <circle r="5" class="s-dot2"><animateMotion dur="4.5s" repeatCount="indefinite" keyPoints="0;1;0;0;1" keyTimes="0;.3;.6;.7;1" calcMode="linear" path="M140,126 L496,192"/></circle>
+            </g>
+          </svg>
+        </div>
+        <figcaption><b>Figure 5.3</b> Two-phase commit’s rounds as listed by Barrett: propose, vote, then commit or abort.<a class="src" href="#s2">[2]</a> Every message waits on the slowest participant, which is why 2PC has high latency and low throughput, and is worse when participants are 50–150 ms apart (Table 5.2). Animation: proposal out, votes back, decision out.</figcaption>
+      </figure>
+      <div class="tablewrap">
+        <table class="tt">
+          <caption class="tcap"><b>Table 5.4</b> Barrett’s “Techniques and trade-offs” table</caption>
+          <thead><tr><th></th><th>Backups</th><th>M/S</th><th>MM</th><th>2PC</th><th>Paxos</th></tr></thead>
+          <tbody>
+            <tr><td><b>Consistency</b></td><td class="b">Weak</td><td class="o" colspan="2">Eventual</td><td class="g" colspan="2">Strong</td></tr>
+            <tr><td><b>Transactions</b></td><td class="b">No</td><td class="g">Full</td><td class="o">Local</td><td class="g" colspan="2">Full</td></tr>
+            <tr><td><b>Latency</b></td><td class="g" colspan="3">Low</td><td class="b" colspan="2">High</td></tr>
+            <tr><td><b>Throughput</b></td><td class="g" colspan="3">High</td><td class="b">Low</td><td class="o">Medium</td></tr>
+            <tr><td><b>Data loss</b></td><td class="b">Lots</td><td class="o" colspan="2">Some</td><td class="g" colspan="2">None</td></tr>
+            <tr><td><b>Failover</b></td><td class="b">Down</td><td class="o">Read only</td><td class="g" colspan="3">Read/write</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:.85rem;color:var(--muted)">From the final version of the table on Barrett’s “Paxos” slide, with its merged cells and colours (green good, yellow middling, red bad).<a class="src" href="#s2">[2]</a> The slides build the table up one column per technique, as the talk does.<a class="src" href="#s3">[3]</a></p>
+      <p>Barrett points out that no column is green all the way down. The pattern in the table is the unit’s main lesson: moving right buys stronger consistency and less data loss, and pays in latency and throughput.</p>
+
+      <h3 id="conclusions">Barrett’s conclusions</h3>
+      <p><b>What App Engine chose.</b> The team wanted Paxos for the datastore, but it would have raised average writes from about 30–50 ms to about 150 ms. Placing datacenters close together, or even two nodes in the same datacenter, did not help enough. Multi-master and 2PC were ruled out early: the first gives up strong consistency, the second write throughput. The datastore uses <b>master-slave replication across datacenters</b>, mainly for latency, with replication done per commit to keep replicas consistent with transactions.<a class="src" href="#s3">[3]</a> Paxos is still used where latency matters less: coordinating moving state, usually through a <b>lock server</b>, plus memcache and offline processing.<a class="src" href="#s2">[2]</a><a class="src" href="#s3">[3]</a></p>
+      <p>His closing points:<a class="src" href="#s2">[2]</a><a class="src" href="#s3">[3]</a></p>
+      <ul>
+        <li><b>No silver bullet.</b> No column of Table 5.4 is good on every row.</li>
+        <li><b>Still worth doing.</b> A two-hour outage, let alone data loss, is unacceptable.</li>
+        <li><b>Let the application choose.</b> A bank wants 2PC or Paxos across datacenters; a game just wants fast responses. He hoped to let developers pick per write between strong writes and fast, highly available ones that may occasionally read stale data.</li>
+      </ul>
+    </section>
+
+    <!-- ===================== 5.7 ===================== -->
+    <section id="further">
+      <h2><span class="num">5.7</span>Going further: finer guarantees</h2>
+      <p>This section goes beyond the primer, using Werner Vogels’ article (Amazon’s CTO). Between “eventual” and “strong” sit guarantees about what a <i>particular</i> client sees. They are often enough to make an eventually consistent system feel correct to its users.<a class="src" href="#s4">[4]</a></p>
+      <div class="tablewrap">
+        <table>
+          <caption class="tcap"><b>Table 5.5</b> Variations of eventual consistency (Vogels, 2009)</caption>
+          <thead><tr><th>Guarantee</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td><b>Causal</b></td><td>If A tells B it updated an item, B’s later reads see that update. Clients with no such link get plain eventual consistency.</td></tr>
+            <tr><td><b>Read-your-writes</b></td><td>After A updates an item, A always sees the new value, never an older one.</td></tr>
+            <tr><td><b>Session</b></td><td>Read-your-writes, kept for as long as a session lasts.</td></tr>
+            <tr><td><b>Monotonic reads</b></td><td>Once a client has seen a value, it never later sees an older one.</td></tr>
+            <tr><td><b>Monotonic writes</b></td><td>Writes from the same client are applied in order.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h4>Quorums: N, W, R</h4>
+      <p>Vogels also shows how a replicated store can choose its level. With <b>N</b> replicas, a write waits for <b>W</b> of them to acknowledge, and a read asks <b>R</b> of them. If <code>W + R &gt; N</code>, every read set overlaps the latest write set, so reads are strongly consistent; smaller W and R give faster but eventually consistent operations.<a class="src" href="#s4">[4]</a> For example, with N = 3, W = 2 and R = 2, any two replicas you read include at least one that took the write.</p>
+    </section>
+
+    <!-- ===================== 5.8 ===================== -->
+    <section id="resources">
+      <h2><span class="num">5.8</span>Resources</h2>
+      <div class="res">
+        <a href="https://github.com/donnemartin/system-design-primer#consistency-patterns"><b>Primer: Consistency patterns</b><span>The source section for this unit</span></a>
+        <a href="http://snarfed.org/transactions_across_datacenters_io.html"><b>Transactions Across Datacenters (slides)</b><span>Barrett’s slides; the primer’s source for all three patterns</span></a>
+        <a href="https://www.youtube.com/watch?v=srOgpXECblk"><b>Google I/O 2009 talk (video)</b><span>The full talk, about an hour including Q&amp;A</span></a>
+        <a href="https://www.allthingsdistributed.com/2008/12/eventually_consistent.html"><b>Eventually Consistent: Revisited</b><span>Vogels’ article on the web; inconsistency window, quorums</span></a>
+        <a href="unit4.html"><b>Unit 4 · Availability vs consistency</b><span>The CAP theorem these patterns build on</span></a>
+        <a href="https://github.com/donnemartin/system-design-primer#availability-patterns"><b>Next: Availability patterns</b><span>Fail-over and replication (Unit 6)</span></a>
+      </div>
+    </section>
+
+    <!-- ===================== 5.9 ===================== -->
+    <section id="sources">
+      <h2><span class="num">5.9</span>Sources</h2>
+      <ol class="sources">
+        <li id="s1">D. Martin et al., <a href="https://github.com/donnemartin/system-design-primer#consistency-patterns">The System Design Primer: Consistency patterns</a>, GitHub.</li>
+        <li id="s2">R. Barrett, <a href="http://snarfed.org/transactions_across_datacenters_io.html">Transactions Across Datacenters (and other weekend projects)</a>, slides, Google I/O, 27 May 2009.</li>
+        <li id="s3">Google for Developers, <a href="https://www.youtube.com/watch?v=srOgpXECblk">Google I/O 2009 - Transactions Across Datacenters</a>, YouTube, 2 June 2009 (transcript).</li>
+        <li id="s4">W. Vogels, “Eventually Consistent”, <i>Communications of the ACM</i> 52(1), January 2009 (<a href="https://cs.brown.edu/courses/csci2950-u/f09/papers/p40-vogels.pdf">PDF</a>).</li>
+        <li id="s5">D. Martin et al., The System Design Primer: <a href="https://github.com/donnemartin/system-design-primer#availability-vs-consistency">Availability vs consistency</a>, <a href="https://github.com/donnemartin/system-design-primer#relational-database-management-system-rdbms">RDBMS</a>, <a href="https://github.com/donnemartin/system-design-primer#nosql">NoSQL</a> and <a href="https://github.com/donnemartin/system-design-primer#user-datagram-protocol-udp">UDP</a> sections, GitHub.</li>
+      </ol>
+    </section>
+  </main>
+</div>
+
+<aside class="note" id="notePanel" role="dialog" aria-labelledby="noteTitle" hidden>
+  <div class="note-head"><strong id="noteTitle">Key terms · Unit 5</strong><button id="noteClose" aria-label="Close key terms">×</button></div>
+  <h5>Basics</h5>
+  <dl>
+    <dt>Replica</dt><dd>One of several copies of the same data.</dd>
+    <dt>Consistency (CAP)</dt><dd>Every read gets the latest write, or an error.</dd>
+    <dt>Synchronous replication</dt><dd>Copy to replicas, then acknowledge. Slower, never stale.</dd>
+    <dt>Asynchronous replication</dt><dd>Acknowledge, then copy. Faster, briefly stale.</dd>
+  </dl>
+  <h5>The patterns</h5>
+  <dl>
+    <dt>Weak</dt><dd>Reads may or may not see a write; best effort. Real-time uses, memcached.</dd>
+    <dt>Eventual</dt><dd>Reads see a write eventually (ms); async. DNS, email.</dd>
+    <dt>Strong</dt><dd>Reads see a write; sync. File systems, RDBMSes.</dd>
+    <dt>Inconsistency window</dt><dd>Time from a write until every reader sees it.</dd>
+  </dl>
+  <h5>Transactions</h5>
+  <dl>
+    <dt>Transaction</dt><dd>Operations that succeed or fail as one unit.</dd>
+    <dt>Invariant</dt><dd>A rule that must always hold, e.g. money totals.</dd>
+    <dt>ACID</dt><dd>Atomicity, consistency, isolation, durability.</dd>
+  </dl>
+  <h5>Across datacenters</h5>
+  <dl>
+    <dt>Multihoming</dt><dd>Serving from several datacenters.</dd>
+    <dt>Bunkerizing</dt><dd>One datacenter made as redundant as possible.</dd>
+    <dt>Master/slave · Multi-master</dt><dd>One writer · many writers, merged later. Both eventual.</dd>
+    <dt>Timestamp oracle</dt><dd>Hands out increasing timestamps to order writes.</dd>
+    <dt>Consensus protocol</dt><dd>Way for nodes to agree on a value.</dd>
+    <dt>2PC</dt><dd>Propose, vote, commit/abort via a coordinator. Strong, slow.</dd>
+    <dt>N + 1</dt><dd>One spare datacenter so one can go down while N serve.</dd>
+    <dt>Paxos</dt><dd>Fully distributed consensus; majority writes; like 2PC with better throughput.</dd>
+    <dt>Lock server</dt><dd>Service that hands out locks; Google’s runs on Paxos.</dd>
+    <dt>Quorum (W + R &gt; N)</dt><dd>Read and write sets overlap, so reads are consistent.</dd>
+  </dl>
+</aside>
+
+<button class="fab" id="notesBtn" aria-label="Show key terms" aria-expanded="false" aria-controls="notePanel" title="Key terms">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M5 3h10l4 4v14H5z"/><path d="M15 3v4h4"/><path d="M8 11h8M8 15h8M8 19h5"/></svg>
+</button>
+<button class="fab hide" id="toTop" aria-label="Return to top" title="Return to top">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+</button>
+
+<script>
+(function(){
+  const links = Array.from(document.querySelectorAll('.toc a'));
+  const targets = links.map(a => document.getElementById(a.getAttribute('href').slice(1))).filter(Boolean);
+  const toc = document.getElementById('toc');
+  const toggle = document.getElementById('tocToggle');
+  const current = document.getElementById('tocCurrent');
+  const toTop = document.getElementById('toTop');
+  const mq = window.matchMedia('(max-width: 960px)');
+
+  function syncToc(){ if(!mq.matches){ toc.hidden = false; } else if(toggle.getAttribute('aria-expanded') !== 'true'){ toc.hidden = true; } }
+  syncToc(); mq.addEventListener ? mq.addEventListener('change', syncToc) : mq.addListener(syncToc);
+
+  toggle.addEventListener('click', () => {
+    const open = toggle.getAttribute('aria-expanded') === 'true';
+    toggle.setAttribute('aria-expanded', String(!open)); toc.hidden = open;
+  });
+  links.forEach(a => a.addEventListener('click', () => {
+    if(mq.matches){ toggle.setAttribute('aria-expanded','false'); toc.hidden = true; }
+  }));
+
+  function spy(){
+    const offset = mq.matches ? 90 : 40;
+    let idx = 0;
+    targets.forEach((t, i) => { if(t.getBoundingClientRect().top - offset <= 0) idx = i; });
+    if(window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) idx = targets.length - 1;
+    links.forEach(a => a.classList.remove('active','parent-active'));
+    const a = links[idx]; if(!a) return;
+    a.classList.add('active');
+    const parentLi = a.closest('ol').closest('li');
+    if(parentLi){ parentLi.querySelector(':scope > a').classList.add('parent-active'); }
+    current.textContent = a.textContent.replace(/^\d\.\d/, m => m + ' ');
+    if(!mq.matches){
+      const r = a.getBoundingClientRect(), rail = document.querySelector('.rail').getBoundingClientRect();
+      if(r.top < rail.top + 40 || r.bottom > rail.bottom - 40){ a.scrollIntoView({block:'nearest'}); }
+    }
+    toTop.classList.toggle('hide', window.scrollY < 500);
+  }
+  let ticking = false;
+  window.addEventListener('scroll', () => { if(!ticking){ requestAnimationFrame(() => { spy(); ticking = false; }); ticking = true; } }, {passive:true});
+  spy();
+
+  toTop.addEventListener('click', () => window.scrollTo({top:0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'}));
+
+  const panel = document.getElementById('notePanel'), btn = document.getElementById('notesBtn');
+  function setNote(open){ panel.hidden = !open; btn.setAttribute('aria-expanded', String(open)); }
+  btn.addEventListener('click', () => setNote(panel.hidden));
+  document.getElementById('noteClose').addEventListener('click', () => { setNote(false); btn.focus(); });
+  document.addEventListener('keydown', e => { if(e.key === 'Escape' && !panel.hidden){ setNote(false); btn.focus(); } });
+})();
+</script>
+
+</body>
+</html>
