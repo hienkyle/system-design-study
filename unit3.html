@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Unit 3 · Latency vs Throughput</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+img{max-width:100%}
+[hidden]{display:none!important}
+
+/* Layout: two-column study page — sticky, independently scrolling contents rail on the left; reading column on the right. Rail becomes a sticky top bar on small screens. */
+:root{
+  --bg:#F3F5F6; --surface:#FFFFFF; --ink:#17212B; --muted:#56636F; --line:#D5DCE1;
+  --accent:#0B6B75; --accent-soft:#DFEEEF; --warm:#A85A16; --warm-soft:#FAEEE0;
+  --code-bg:#EBF0F2; --good:#2E7D4F; --bad:#B23B3B;
+  --font:"IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --rail:270px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F1519; --surface:#151D23; --ink:#E2E8EC; --muted:#94A3AE; --line:#2A363F;
+  --accent:#55C2CA; --accent-soft:#123038; --warm:#E3A466; --warm-soft:#2D2218;
+  --code-bg:#1B252C; --good:#6FCB94; --bad:#EC8A8A; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F1519; --surface:#151D23; --ink:#E2E8EC; --muted:#94A3AE; --line:#2A363F;
+  --accent:#55C2CA; --accent-soft:#123038; --warm:#E3A466; --warm-soft:#2D2218;
+  --code-bg:#1B252C; --good:#6FCB94; --bad:#EC8A8A; color-scheme:dark}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.65;margin:0}
+a{color:var(--accent);text-underline-offset:2px}
+a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+code,kbd{font-family:var(--mono);font-size:.88em;background:var(--code-bg);padding:.08em .35em;border-radius:4px}
+
+.shell{display:grid;grid-template-columns:var(--rail) minmax(0,1fr);max-width:1240px;margin:0 auto;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));gap:40px}
+
+/* ---------- Contents rail ---------- */
+.rail{position:sticky;top:env(safe-area-inset-top, 0px);height:100vh;overflow-y:auto;padding-block:32px;
+  scrollbar-width:thin;overscroll-behavior:contain}
+.rail-head{display:flex;flex-direction:column;align-items:flex-start;gap:14px;position:sticky;top:0;z-index:2;background:var(--bg);padding-block:32px 4px;margin-top:-32px}
+.back{display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:var(--ink);font-size:.85rem;font-weight:500;
+  border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 12px 6px 9px}
+.back:hover{border-color:var(--accent);color:var(--accent)}
+.rail h2{font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 12px;font-weight:600}
+.toc-toggle{display:none}
+.toc ol{list-style:none;margin:0;padding:0}
+.toc li{margin:0}
+.toc a{display:block;text-decoration:none;color:var(--muted);font-size:.9rem;line-height:1.35;padding:6px 10px;border-left:2px solid var(--line)}
+.toc a:hover{color:var(--ink)}
+.toc ol ol a{padding-left:24px;font-size:.84rem}
+.toc a.active{color:var(--accent);border-left-color:var(--accent);background:var(--accent-soft);font-weight:600}
+.toc a.parent-active{color:var(--ink);border-left-color:var(--accent)}
+.toc .num{font-family:var(--mono);font-size:.8em;margin-right:6px}
+
+/* ---------- Main ---------- */
+main{min-width:0;padding-block:40px 120px;max-width:780px}
+p,li,figcaption,.note p{text-align:justify;hyphens:auto;-webkit-hyphens:auto}
+header.unit{border-bottom:1px solid var(--line);padding-bottom:28px;margin-bottom:8px}
+.eyebrow{font-family:var(--mono);font-size:.8rem;color:var(--accent);letter-spacing:.06em;margin:0 0 8px;text-align:left}
+h1{font-size:clamp(1.9rem,4.4vw,2.6rem);line-height:1.15;margin:0 0 14px;font-weight:700;text-wrap:balance;letter-spacing:-.01em}
+h2{font-size:1.6rem;line-height:1.25;margin:64px 0 12px;text-wrap:balance;font-weight:700}
+h3{font-size:1.2rem;line-height:1.3;margin:44px 0 8px;text-wrap:balance;font-weight:600}
+h4{font-size:1rem;margin:26px 0 6px;font-weight:600}
+h2 .num,h3 .num{font-family:var(--mono);color:var(--accent);font-weight:500;margin-right:10px;font-size:.85em}
+.lede{font-size:1.08rem;color:var(--muted);margin:0}
+.meta{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:16px;font-size:.85rem;color:var(--muted)}
+.meta span{white-space:nowrap}
+ul,ol{padding-left:1.3em}
+li{margin:4px 0}
+.src{font-size:.72em;vertical-align:super;line-height:0;text-decoration:none;font-family:var(--mono);margin-left:1px}
+
+/* callouts */
+.callout{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:14px 18px;margin:20px 0}
+.callout.tip{border-left:4px solid var(--accent)}
+.callout.warn{border-left:4px solid var(--warm);background:var(--warm-soft)}
+.callout .label{display:block;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--muted);margin-bottom:4px;text-align:left}
+.callout p{margin:4px 0}
+
+.prosCons{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:16px 0}
+.prosCons div{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 16px;min-width:0}
+.prosCons h4{margin:4px 0;font-size:.85rem;letter-spacing:.06em;text-transform:uppercase}
+.prosCons .pro h4{color:var(--good)} .prosCons .con h4{color:var(--bad)}
+.prosCons ul{margin:4px 0;padding-left:1.1em}
+
+blockquote{margin:18px 0;padding:8px 18px;border-left:3px solid var(--warm);color:var(--ink);font-style:italic}
+blockquote cite{display:block;font-style:normal;font-size:.85rem;color:var(--muted);margin-top:4px}
+
+/* figures + tables */
+figure{margin:26px 0;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px}
+.figwrap{overflow-x:auto}
+figure svg{display:block;width:100%;height:auto;min-width:520px}
+figcaption{font-size:.88rem;color:var(--muted);margin-top:10px;border-top:1px dashed var(--line);padding-top:8px}
+figcaption b{color:var(--ink);font-family:var(--mono);font-weight:500;margin-right:4px}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem;min-width:520px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;font-size:.8rem;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+td code{white-space:nowrap}
+.tcap{caption-side:top;text-align:left;font-size:.88rem;color:var(--muted);padding-bottom:8px}
+.tcap b{color:var(--ink);font-family:var(--mono);font-weight:500;margin-right:4px}
+
+/* svg tokens */
+.s-box{fill:var(--surface);stroke:var(--line);stroke-width:1.5}
+.s-acc{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5}
+.s-warm{fill:var(--warm-soft);stroke:var(--warm);stroke-width:1.5}
+.s-line{stroke:var(--muted);stroke-width:1.5;fill:none}
+.s-dash{stroke:var(--muted);stroke-width:1.3;fill:none;stroke-dasharray:5 4}
+.s-t{fill:var(--ink);font-family:var(--font);font-size:13px}
+.s-tb{fill:var(--ink);font-family:var(--font);font-size:13px;font-weight:600}
+.s-ts{fill:var(--muted);font-family:var(--font);font-size:11px}
+.s-tm{fill:var(--muted);font-family:var(--mono);font-size:11px}
+.s-dot{fill:var(--accent)} .s-dot2{fill:var(--warm)}
+.s-arrow{fill:var(--muted)}
+@media (prefers-reduced-motion: reduce){.anim{display:none}}
+
+/* resource cards */
+.res{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:16px 0}
+.res a{display:block;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:12px 14px;text-decoration:none;color:var(--ink);min-width:0}
+.res a:hover{border-color:var(--accent)}
+.res b{display:block;font-size:.95rem}
+.res span{display:block;font-size:.82rem;color:var(--muted);margin-top:2px}
+ol.sources{font-size:.88rem;padding-left:2.2em}
+ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
+
+/* floating buttons */
+.fab{position:fixed;right:calc(18px + env(safe-area-inset-right, 0px));width:46px;height:46px;border-radius:50%;
+  border:1px solid var(--line);background:var(--surface);color:var(--ink);display:grid;place-items:center;cursor:pointer;
+  box-shadow:0 4px 14px rgba(0,0,0,.12);z-index:40;transition:opacity .2s, transform .2s}
+.fab svg{width:20px;height:20px}
+#toTop{bottom:calc(18px + env(safe-area-inset-bottom, 0px))}
+#notesBtn{bottom:calc(74px + env(safe-area-inset-bottom, 0px));background:var(--warm-soft);border-color:var(--warm);color:var(--warm)}
+#toTop.hide{opacity:0;pointer-events:none;transform:translateY(8px)}
+
+/* key-terms note widget */
+.note{position:fixed;right:calc(18px + env(safe-area-inset-right, 0px));bottom:calc(130px + env(safe-area-inset-bottom, 0px));
+  width:min(380px,calc(100vw - 36px));max-height:min(70vh,620px);overflow:auto;z-index:45;
+  background:var(--warm-soft);border:1px solid var(--warm);border-radius:12px;padding:0 18px 16px;
+  box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.note-head{position:sticky;top:0;background:var(--warm-soft);display:flex;justify-content:space-between;align-items:center;padding:14px 0 8px;border-bottom:1px dashed var(--warm)}
+.note-head strong{font-size:.95rem}
+.note-head button{border:0;background:none;color:var(--ink);font-size:1.3rem;cursor:pointer;line-height:1;padding:4px 8px}
+.note dl{margin:8px 0 0}
+.note dt{font-weight:600;font-size:.9rem;margin-top:10px}
+.note dd{margin:2px 0 0;font-size:.85rem;color:var(--ink);text-align:justify;hyphens:auto}
+.note h5{font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--warm);margin:16px 0 0}
+
+/* ---------- small screens ---------- */
+@media (max-width: 960px){
+  .shell{display:block}
+  body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top, 0px);z-index:31;background:var(--surface)}
+  .rail{position:sticky;top:env(safe-area-inset-top, 0px);z-index:30;height:auto;max-height:none;overflow:visible;
+    background:var(--surface);border-bottom:1px solid var(--line);padding:0;
+    margin-left:calc(-1 * max(16px, env(safe-area-inset-left, 0px)));margin-right:calc(-1 * max(16px, env(safe-area-inset-right, 0px)));
+    padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+  .rail-head{position:static;flex-direction:row;align-items:center;justify-content:space-between;padding-block:10px;margin-top:0;background:transparent}
+  .rail h2{display:none}
+  .toc-toggle{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);
+    border-radius:8px;padding:6px 10px;font:500 .85rem var(--font);cursor:pointer;min-width:0;max-width:72%}
+  .toc-toggle span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .toc{max-height:60vh;overflow-y:auto;padding-bottom:12px}
+  .toc[hidden]{display:none!important}
+  html{scroll-padding-top:70px}
+  main{padding-top:24px}
+}
+@media (min-width: 961px){ .toc[hidden]{display:block!important} }
+
+.steps{list-style:none;padding:0;margin:16px 0;display:grid;gap:10px;counter-reset:st}
+.steps li{counter-increment:st;display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:start;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin:0}
+.steps li::before{content:counter(st);font-family:var(--mono);font-size:.8rem;color:var(--accent);background:var(--accent-soft);border-radius:6px;padding:2px 8px;margin-top:2px}
+.calc{font-family:var(--mono);font-size:.88rem;display:block;margin:4px 0;color:var(--ink);text-align:left}
+.defs{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin:16px 0}
+.defs div{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 16px;min-width:0}
+.defs h4{margin:0 0 4px;font-size:1rem}
+.defs .lat h4{color:var(--warm)} .defs .thr h4{color:var(--accent)}
+.defs p{margin:4px 0}
+.s-warmt{fill:var(--warm)} .s-acct{fill:var(--accent)}
+@keyframes roll{from{transform:translateX(0)}to{transform:translateX(13px)}}
+.cars{animation:roll 1.4s linear infinite}
+@keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
+.blink{animation:pulse 1.4s ease-in-out infinite}
+@media (prefers-reduced-motion: reduce){.cars,.blink{animation:none}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="rail" aria-label="Contents">
+    <div class="rail-head">
+      <a class="back" href="index.html" title="Back to all units"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>All units</a>
+      <h2>Contents</h2>
+      <button class="toc-toggle" id="tocToggle" aria-expanded="false" aria-controls="toc">
+        <span id="tocCurrent">Contents</span>
+        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.6" fill="none"/></svg>
+      </button>
+    </div>
+    <nav class="toc" id="toc" hidden>
+      <ol>
+        <li><a href="#definitions"><span class="num">3.1</span>Two definitions</a>
+          <ol>
+            <li><a href="#units">Units of each measure</a></li>
+            <li><a href="#overlap">Seeing both on one timeline</a></li>
+          </ol>
+        </li>
+        <li><a href="#factory"><span class="num">3.2</span>The car factory</a>
+          <ol>
+            <li><a href="#why-both">Why both numbers hold</a></li>
+          </ol>
+        </li>
+        <li><a href="#goal"><span class="num">3.3</span>The design goal</a></li>
+        <li><a href="#hardware"><span class="num">3.4</span>Worked example: a hardware spec</a>
+          <ol>
+            <li><a href="#convert">Converting the spec</a></li>
+            <li><a href="#shorthand">The “throughput = 10” shorthand</a></li>
+          </ol>
+        </li>
+        <li><a href="#resources"><span class="num">3.5</span>Resources</a></li>
+        <li><a href="#sources"><span class="num">3.6</span>Sources</a></li>
+      </ol>
+    </nav>
+  </aside>
+
+  <main id="top">
+    <header class="unit">
+      <p class="eyebrow">SYSTEM DESIGN PRIMER · UNIT 3</p>
+      <h1>Latency vs throughput</h1>
+      <p class="lede">The second of the primer’s three high-level trade-offs. Latency describes how long one piece of work takes; throughput describes how many pieces of work get done in a given time. They measure the same process from two different angles, and a design target needs both.<a class="src" href="#s1">[1]</a><a class="src" href="#s2">[2]</a></p>
+      <div class="meta"><span>Primer section · Latency vs throughput</span><span>Cadence · “Understanding Latency versus Throughput” (2022)</span></div>
+    </header>
+
+    <!-- ===================== 3.1 ===================== -->
+    <section id="definitions">
+      <h2><span class="num">3.1</span>Two definitions</h2>
+      <p>The two terms are often confused or used as if they meant the same thing.<a class="src" href="#s2">[2]</a> The primer defines them in one line each:<a class="src" href="#s1">[1]</a></p>
+      <div class="defs">
+        <div class="lat"><h4>Latency</h4><p>The <b>time</b> to perform some action or to produce some result.</p></div>
+        <div class="thr"><h4>Throughput</h4><p>The <b>number</b> of such actions or results <b>per unit of time</b>.</p></div>
+      </div>
+
+      <h3 id="units">Units of each measure</h3>
+      <p>Because one is a duration and the other is a rate, they carry different units. Latency is measured in time: hours, seconds, nanoseconds, or, in hardware, <b>clock periods</b> (one tick of the chip’s clock). Throughput is measured in whatever is being produced, divided by time: cars, I/O samples, memory words or loop iterations per second, hour or clock period. For memory systems, throughput is sometimes called <b>memory bandwidth</b>.<a class="src" href="#s2">[2]</a></p>
+      <div class="tablewrap">
+        <table>
+          <caption class="tcap"><b>Table 1.</b> Latency and throughput side by side</caption>
+          <thead><tr><th></th><th>Latency</th><th>Throughput</th></tr></thead>
+          <tbody>
+            <tr><td>Question it answers</td><td>How long does one result take?</td><td>How many results per unit of time?</td></tr>
+            <tr><td>Kind of quantity</td><td>Duration</td><td>Rate</td></tr>
+            <tr><td>Units</td><td>h, s, ns, clock periods</td><td>items / time (e.g. cars/h, words/s)</td></tr>
+            <tr><td>Other names</td><td>—</td><td>Memory bandwidth (for memory systems)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="overlap">Seeing both on one timeline</h3>
+      <p>In Figure 1, each bar is one request. The length of a single bar is its latency. Throughput ignores how long any one bar is and simply counts how many bars finish inside a fixed window of time. Because work can overlap, the two numbers do not have to be reciprocals of each other.</p>
+      <figure>
+        <div class="figwrap"><svg viewBox="0 0 640 310" role="img" aria-labelledby="f1t"><title id="f1t">Five overlapping requests on a time axis. One request bar is marked as latency; a time window counts how many requests finish inside it, which is throughput.</title>
+<defs><marker id="ah1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="s-arrow"/></marker></defs>
+<rect x="340" y="28" width="140" height="230" fill="var(--accent-soft)" stroke="var(--accent)" stroke-dasharray="4 3"/>
+<text x="410" y="22" text-anchor="middle" class="s-tb s-acct">one unit of time</text>
+<rect x="60" y="40" width="200" height="20" rx="4" class="s-box"/><text x="68" y="54" class="s-ts">request 1</text><circle cx="260" cy="50" r="5" class="s-dot"/><rect x="130" y="88" width="200" height="20" rx="4" class="s-warm"/><text x="138" y="102" class="s-ts">request 2</text><circle cx="330" cy="98" r="5" class="s-dot"/><rect x="200" y="136" width="200" height="20" rx="4" class="s-box"/><text x="208" y="150" class="s-ts">request 3</text><circle cx="400" cy="146" r="5" class="s-dot"/><rect x="270" y="184" width="200" height="20" rx="4" class="s-box"/><text x="278" y="198" class="s-ts">request 4</text><circle cx="470" cy="194" r="5" class="s-dot"/><rect x="340" y="232" width="200" height="20" rx="4" class="s-box"/><text x="348" y="246" class="s-ts">request 5</text><circle cx="540" cy="242" r="5" class="s-dot"/>
+<line x1="130" y1="114" x2="330" y2="114" stroke="var(--warm)" stroke-width="1.5"/><line x1="130" y1="109" x2="130" y2="119" stroke="var(--warm)" stroke-width="1.5"/><line x1="330" y1="109" x2="330" y2="119" stroke="var(--warm)" stroke-width="1.5"/>
+<text x="230" y="130" text-anchor="middle" class="s-tb s-warmt">latency of request 2</text>
+<line x1="60" y1="266" x2="610" y2="266" class="s-line" marker-end="url(#ah1)"/>
+<text x="600" y="282" text-anchor="end" class="s-ts">time →</text>
+<text x="410" y="300" text-anchor="middle" class="s-t">throughput: 2 results finish (●) in this window</text>
+</svg></div>
+        <figcaption><b>Figure 1.</b> Latency is measured along one request; throughput is a count of completions per unit of time. Illustration of the primer’s definitions.<a class="src" href="#s1">[1]</a></figcaption>
+      </figure>
+    </section>
+
+    <!-- ===================== 3.2 ===================== -->
+    <section id="factory">
+      <h2><span class="num">3.2</span>The car factory</h2>
+      <p>Cadence’s example: an assembly line takes <b>8 hours</b> to build one car, and the factory turns out <b>120 cars per day</b>. The latency is 8 hours. The throughput is 120 cars/day, which is 120 ÷ 24 = <b>5 cars/hour</b>.<a class="src" href="#s2">[2]</a> Both describe the same factory; neither one can be worked out from the other alone.</p>
+      <div class="tablewrap">
+        <table>
+          <caption class="tcap"><b>Table 2.</b> The car factory in numbers</caption>
+          <thead><tr><th>Measure</th><th>Value</th><th>How it is read</th></tr></thead>
+          <tbody>
+            <tr><td>Latency</td><td>8 hours</td><td>Time for one car to go from start to finished</td></tr>
+            <tr><td>Throughput</td><td>120 cars/day = 5 cars/hour</td><td>Finished cars leaving the factory per unit of time</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="why-both">Why both numbers hold</h3>
+      <p>If the line built one car at a time, an 8-hour latency would cap output at 1 ÷ 8 = 0.125 cars/hour. Getting 5 cars/hour means many cars are on the line at once, each at a different stage, so a finished car leaves every 12 minutes even though each one took 8 hours. <b>Little’s law</b> gives the size of that overlap: the average number of items in a system equals the rate at which they leave (throughput) times the time each spends inside (latency).<a class="src" href="#s3">[3]</a> Here that is 5 cars/h × 8 h = about <b>40 cars in progress</b>.</p>
+      <figure>
+        <div class="figwrap"><svg viewBox="0 0 640 230" role="img" aria-labelledby="f2t"><title id="f2t">An assembly line eight hours long with about forty cars on it at once. A car enters and a car leaves every twelve minutes.</title>
+<defs><marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="s-arrow"/></marker>
+<clipPath id="lineclip"><rect x="60" y="100" width="520" height="30"/></clipPath></defs>
+<rect x="60" y="100" width="520" height="30" rx="4" class="s-box"/>
+<g clip-path="url(#lineclip)"><g class="cars"><rect x="21" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="34" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="47" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="60" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="73" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="86" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="99" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="112" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="125" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="138" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="151" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="164" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="177" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="190" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="203" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="216" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="229" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="242" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="255" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="268" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="281" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="294" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="307" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="320" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="333" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="346" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="359" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="372" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="385" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="398" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="411" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="424" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="437" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="450" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="463" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="476" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="489" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="502" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="515" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="528" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="541" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="554" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="567" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="580" y="111" width="9" height="8" rx="2" class="s-dot"/><rect x="593" y="111" width="9" height="8" rx="2" class="s-dot"/></g></g>
+<line x1="60" y1="132" x2="60" y2="140" class="s-line"/><text x="60" y="154" text-anchor="middle" class="s-tm">0 h</text><line x1="125" y1="132" x2="125" y2="140" class="s-line"/><text x="125" y="154" text-anchor="middle" class="s-tm">1 h</text><line x1="190" y1="132" x2="190" y2="140" class="s-line"/><text x="190" y="154" text-anchor="middle" class="s-tm">2 h</text><line x1="255" y1="132" x2="255" y2="140" class="s-line"/><text x="255" y="154" text-anchor="middle" class="s-tm">3 h</text><line x1="320" y1="132" x2="320" y2="140" class="s-line"/><text x="320" y="154" text-anchor="middle" class="s-tm">4 h</text><line x1="385" y1="132" x2="385" y2="140" class="s-line"/><text x="385" y="154" text-anchor="middle" class="s-tm">5 h</text><line x1="450" y1="132" x2="450" y2="140" class="s-line"/><text x="450" y="154" text-anchor="middle" class="s-tm">6 h</text><line x1="515" y1="132" x2="515" y2="140" class="s-line"/><text x="515" y="154" text-anchor="middle" class="s-tm">7 h</text><line x1="580" y1="132" x2="580" y2="140" class="s-line"/><text x="580" y="154" text-anchor="middle" class="s-tm">8 h</text>
+<line x1="60" y1="72" x2="580" y2="72" stroke="var(--warm)" stroke-width="1.5"/><line x1="60" y1="66" x2="60" y2="78" stroke="var(--warm)" stroke-width="1.5"/><line x1="580" y1="66" x2="580" y2="78" stroke="var(--warm)" stroke-width="1.5"/>
+<text x="320" y="58" text-anchor="middle" class="s-tb s-warmt">latency: each car spends 8 h on the line</text>
+<line x1="8" y1="115" x2="54" y2="115" class="s-line" marker-end="url(#ah2)"/>
+<line x1="586" y1="115" x2="632" y2="115" class="s-line" marker-end="url(#ah2)"/>
+<text x="60" y="185" class="s-t">in: 1 car / 12 min</text>
+<text x="580" y="185" text-anchor="end" class="s-tb s-acct">out: 1 car / 12 min = 5 cars/h</text>
+<text x="320" y="214" text-anchor="middle" class="s-ts">≈ 40 cars in progress at any moment (5 cars/h × 8 h)</text>
+</svg></div>
+        <figcaption><b>Figure 2.</b> The car factory as a moving line. Latency is the length of the line; throughput is the rate cars drop off the end. Numbers from Cadence’s example;<a class="src" href="#s2">[2]</a> the cars-in-progress count applies Little’s law.<a class="src" href="#s3">[3]</a></figcaption>
+      </figure>
+      <div class="callout tip"><span class="label">Takeaway</span><p>Throughput can rise without latency falling: add more work in parallel (more cars on the line) and output goes up while each car still takes 8 hours.</p></div>
+    </section>
+
+    <!-- ===================== 3.3 ===================== -->
+    <section id="goal">
+      <h2><span class="num">3.3</span>The design goal</h2>
+      <p>The primer’s guideline is short: aim for <b>maximal throughput</b> with <b>acceptable latency</b>.<a class="src" href="#s1">[1]</a> Throughput is the quantity to push as high as possible, because it decides how much total work the system can absorb. Latency is a constraint: it only has to stay inside a limit set by the requirements, and the limit is what “acceptable” means.</p>
+      <p>The hardware example in 3.4 shows the shape of such a requirement. The spec states a latency budget (computation must finish within 1000 ns) and a throughput the device must reach (640 Mbit/s), and the design must satisfy both.<a class="src" href="#s2">[2]</a></p>
+      <div class="callout"><span class="label">Where this fits</span><p>Unit 2 covered the first trade-off, performance vs scalability. The third, availability vs consistency, follows in Unit 4.</p></div>
+    </section>
+
+    <!-- ===================== 3.4 ===================== -->
+    <section id="hardware">
+      <h2><span class="num">3.4</span>Worked example: a hardware spec</h2>
+      <p>Cadence writes for hardware engineers who now share C++/SystemC code and vocabulary with system designers through <b>High-Level Synthesis (HLS)</b>, a flow that generates hardware from such high-level code.<a class="src" href="#s2">[2]</a> Its second example is a communications device with these requirements:</p>
+      <div class="tablewrap">
+        <table>
+          <caption class="tcap"><b>Table 3.</b> Requirements for the communications device</caption>
+          <thead><tr><th>Requirement</th><th>Value</th><th>Which measure</th></tr></thead>
+          <tbody>
+            <tr><td>Clock frequency</td><td><code>100 MHz</code></td><td>Sets the size of one clock period</td></tr>
+            <tr><td>Available computation time</td><td><code>1000 ns</code></td><td>Latency budget</td></tr>
+            <tr><td>Device throughput</td><td><code>640 Mbit/s</code></td><td>Throughput</td></tr>
+            <tr><td>Output word width</td><td><code>64 bits</code></td><td>Size of one result</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="convert">Converting the spec</h3>
+      <p>A hardware designer works in clock periods, so both figures are converted into that unit:<a class="src" href="#s2">[2]</a></p>
+      <ol class="steps">
+        <li><div><b>Clock period.</b> At 100 MHz the clock ticks 100 million times per second, so one period lasts 10 ns.<span class="calc">1 ÷ 100 MHz = 10 ns</span></div></li>
+        <li><div><b>Latency in clock periods.</b> The 1000 ns budget fits 100 periods.<span class="calc">1000 ns ÷ 10 ns = 100 clock periods</span></div></li>
+        <li><div><b>Throughput in words.</b> Each result is one 64-bit word.<span class="calc">640 Mbit/s ÷ 64 bit = 10 million words/s</span></div></li>
+        <li><div><b>Throughput per clock period.</b> Divide by the 100 million periods in each second.<span class="calc">10 M words/s ÷ 100 M periods/s = 0.1 words/period</span>That is the same as <b>one word every 10 clock periods</b>.</div></li>
+      </ol>
+      <p>These two values, a latency of 100 clock periods and 10 periods between output words, are what the designer builds the hardware to meet.<a class="src" href="#s2">[2]</a> Figure 3 draws them on one timeline: outputs leave every 10 periods while each one took 100 periods to produce, so roughly 100 ÷ 10 = 10 words are in progress at once, the same overlap seen in the car factory.<a class="src" href="#s3">[3]</a></p>
+      <figure>
+        <div class="figwrap"><svg viewBox="0 0 640 250" role="img" aria-labelledby="f3t"><title id="f3t">Clock-cycle timeline: an input taken at cycle 0 produces its output at cycle 100; a new word is taken every 10 cycles, so outputs leave at cycles 100, 110, 120 and so on.</title>
+<text x="20" y="70" class="s-tb">in</text><text x="20" y="158" class="s-tb">out</text>
+<line x1="60" y1="190" x2="620" y2="190" class="s-line"/>
+<text x="340" y="236" text-anchor="middle" class="s-ts">clock periods (1 period = 10 ns at 100 MHz)</text>
+<line x1="60.0" y1="190" x2="60.0" y2="196" class="s-line"/><text x="60.0" y="210" text-anchor="middle" class="s-tm">0</text><line x1="98.6" y1="190" x2="98.6" y2="196" class="s-line"/><text x="98.6" y="210" text-anchor="middle" class="s-tm">10</text><line x1="137.1" y1="190" x2="137.1" y2="196" class="s-line"/><text x="137.1" y="210" text-anchor="middle" class="s-tm">20</text><line x1="175.7" y1="190" x2="175.7" y2="196" class="s-line"/><text x="175.7" y="210" text-anchor="middle" class="s-tm">30</text><line x1="214.3" y1="190" x2="214.3" y2="196" class="s-line"/><text x="214.3" y="210" text-anchor="middle" class="s-tm">40</text><line x1="252.9" y1="190" x2="252.9" y2="196" class="s-line"/><text x="252.9" y="210" text-anchor="middle" class="s-tm">50</text><line x1="291.4" y1="190" x2="291.4" y2="196" class="s-line"/><text x="291.4" y="210" text-anchor="middle" class="s-tm">60</text><line x1="330.0" y1="190" x2="330.0" y2="196" class="s-line"/><text x="330.0" y="210" text-anchor="middle" class="s-tm">70</text><line x1="368.6" y1="190" x2="368.6" y2="196" class="s-line"/><text x="368.6" y="210" text-anchor="middle" class="s-tm">80</text><line x1="407.1" y1="190" x2="407.1" y2="196" class="s-line"/><text x="407.1" y="210" text-anchor="middle" class="s-tm">90</text><line x1="445.7" y1="190" x2="445.7" y2="196" class="s-line"/><text x="445.7" y="210" text-anchor="middle" class="s-tm">100</text><line x1="484.3" y1="190" x2="484.3" y2="196" class="s-line"/><text x="484.3" y="210" text-anchor="middle" class="s-tm">110</text><line x1="522.8" y1="190" x2="522.8" y2="196" class="s-line"/><text x="522.8" y="210" text-anchor="middle" class="s-tm">120</text><line x1="561.4" y1="190" x2="561.4" y2="196" class="s-line"/><text x="561.4" y="210" text-anchor="middle" class="s-tm">130</text><line x1="600.0" y1="190" x2="600.0" y2="196" class="s-line"/><text x="600.0" y="210" text-anchor="middle" class="s-tm">140</text><line x1="60.0" y1="70" x2="445.7" y2="150" class="s-dash"/><circle cx="60.0" cy="66" r="5" class="s-dot2"/><circle cx="445.7" cy="154" r="5" class="s-dot blink"/><line x1="98.6" y1="70" x2="484.3" y2="150" class="s-dash"/><circle cx="98.6" cy="66" r="5" class="s-dot2"/><circle cx="484.3" cy="154" r="5" class="s-dot"/><line x1="137.1" y1="70" x2="522.8" y2="150" class="s-dash"/><circle cx="137.1" cy="66" r="5" class="s-dot2"/><circle cx="522.8" cy="154" r="5" class="s-dot"/><line x1="175.7" y1="70" x2="561.4" y2="150" class="s-dash"/><circle cx="175.7" cy="66" r="5" class="s-dot2"/><circle cx="561.4" cy="154" r="5" class="s-dot"/><line x1="214.3" y1="70" x2="600.0" y2="150" class="s-dash"/><circle cx="214.3" cy="66" r="5" class="s-dot2"/><circle cx="600.0" cy="154" r="5" class="s-dot"/>
+<line x1="60.0" y1="38" x2="445.7" y2="38" stroke="var(--warm)" stroke-width="1.5"/><line x1="60.0" y1="32" x2="60.0" y2="44" stroke="var(--warm)" stroke-width="1.5"/><line x1="445.7" y1="32" x2="445.7" y2="44" stroke="var(--warm)" stroke-width="1.5"/>
+<text x="252.9" y="26" text-anchor="middle" class="s-tb s-warmt">latency = 100 clock periods (1000 ns)</text>
+<line x1="445.7" y1="174" x2="484.3" y2="174" stroke="var(--accent)" stroke-width="2"/>
+<text x="490.1" y="178" class="s-tb s-acct">10 periods apart</text>
+</svg></div>
+        <figcaption><b>Figure 3.</b> The device spec on a clock-cycle timeline: each word takes 100 periods (latency) and a finished word leaves every 10 periods (throughput). Values from Cadence’s example.<a class="src" href="#s2">[2]</a></figcaption>
+      </figure>
+
+      <h3 id="shorthand">The “throughput = 10” shorthand</h3>
+      <div class="callout warn"><span class="label">Watch the units</span><p>Some tools report throughput as the number of clock periods between outputs. For this device such a tool would print <b>10</b>. Cadence notes this is common and convenient but not strictly correct: by definition, throughput here is 0.1 words per clock period.<a class="src" href="#s2">[2]</a> A larger “10” means slower output, the opposite of a true rate.</p></div>
+    </section>
+
+    <!-- ===================== 3.5 ===================== -->
+    <section id="resources">
+      <h2><span class="num">3.5</span>Resources</h2>
+      <div class="res">
+        <a href="https://community.cadence.com/cadence_blogs_8/b/fv/posts/understanding-latency-vs-throughput"><b>Understanding Latency versus Throughput</b><span>Cadence’s two-minute post; the source behind both examples</span></a>
+        <a href="https://github.com/donnemartin/system-design-primer#latency-vs-throughput"><b>Primer: Latency vs throughput</b><span>The source section for this unit</span></a>
+        <a href="https://github.com/donnemartin/system-design-primer#latency-numbers-every-programmer-should-know"><b>Primer: Latency numbers every programmer should know</b><span>Typical latencies from an L1 cache hit to a cross-continent round trip (Unit 17)</span></a>
+        <a href="https://en.wikipedia.org/wiki/Little%27s_law"><b>Little’s law</b><span>Why throughput × latency gives the amount of work in progress</span></a>
+        <a href="unit2.html"><b>Unit 2 · Performance vs scalability</b><span>The first of the three trade-offs</span></a>
+        <a href="https://github.com/donnemartin/system-design-primer#availability-vs-consistency"><b>Next: Availability vs consistency</b><span>The third trade-off and the CAP theorem (Unit 4)</span></a>
+      </div>
+    </section>
+
+    <!-- ===================== 3.6 ===================== -->
+    <section id="sources">
+      <h2><span class="num">3.6</span>Sources</h2>
+      <ol class="sources">
+        <li id="s1">D. Martin et al., <a href="https://github.com/donnemartin/system-design-primer#latency-vs-throughput">The System Design Primer: Latency vs throughput</a>, GitHub.</li>
+        <li id="s2">Cadence Design Systems, <a href="https://community.cadence.com/cadence_blogs_8/b/fv/posts/understanding-latency-vs-throughput">Understanding Latency versus Throughput</a>, Cadence Community blog, 30 November 2022.</li>
+        <li id="s3">Wikipedia, <a href="https://en.wikipedia.org/wiki/Little%27s_law">Little’s law</a>. Outside source, used for the work-in-progress figures in 3.2 and 3.4.</li>
+      </ol>
+    </section>
+  </main>
+</div>
+
+<aside class="note" id="notePanel" role="dialog" aria-labelledby="noteTitle" hidden>
+  <div class="note-head"><strong id="noteTitle">Key terms · Unit 3</strong><button id="noteClose" aria-label="Close key terms">×</button></div>
+  <h5>Definitions</h5>
+  <dl>
+    <dt>Latency</dt><dd>Time to produce one result. Units: s, ns, clock periods.</dd>
+    <dt>Throughput</dt><dd>Results produced per unit of time, e.g. cars/h, words/s.</dd>
+    <dt>Memory bandwidth</dt><dd>Another name for a memory system’s throughput.</dd>
+    <dt>Design goal</dt><dd>Maximal throughput with acceptable latency.</dd>
+  </dl>
+  <h5>Relating the two</h5>
+  <dl>
+    <dt>Overlap</dt><dd>Many items in progress at once lets throughput exceed 1 ÷ latency.</dd>
+    <dt>Little’s law</dt><dd>Items in progress = throughput × latency (5/h × 8 h = 40 cars).</dd>
+  </dl>
+  <h5>Hardware terms</h5>
+  <dl>
+    <dt>Clock period</dt><dd>One clock tick; 10 ns at 100 MHz.</dd>
+    <dt>HLS</dt><dd>High-Level Synthesis: building hardware from C++/SystemC.</dd>
+    <dt>Words per clock period</dt><dd>Throughput in hardware units, e.g. 0.1.</dd>
+    <dt>Periods between outputs</dt><dd>Tool shorthand for throughput (e.g. “10”); convenient but not a true rate.</dd>
+  </dl>
+</aside>
+
+<button class="fab" id="notesBtn" aria-label="Show key terms" aria-expanded="false" aria-controls="notePanel" title="Key terms">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M5 3h10l4 4v14H5z"/><path d="M15 3v4h4"/><path d="M8 11h8M8 15h8M8 19h5"/></svg>
+</button>
+<button class="fab hide" id="toTop" aria-label="Return to top" title="Return to top">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+</button>
+
+<script>
+(function(){
+  const links = Array.from(document.querySelectorAll('.toc a'));
+  const targets = links.map(a => document.getElementById(a.getAttribute('href').slice(1))).filter(Boolean);
+  const toc = document.getElementById('toc');
+  const toggle = document.getElementById('tocToggle');
+  const current = document.getElementById('tocCurrent');
+  const toTop = document.getElementById('toTop');
+  const mq = window.matchMedia('(max-width: 960px)');
+
+  function syncToc(){ if(!mq.matches){ toc.hidden = false; } else if(toggle.getAttribute('aria-expanded') !== 'true'){ toc.hidden = true; } }
+  syncToc(); mq.addEventListener ? mq.addEventListener('change', syncToc) : mq.addListener(syncToc);
+
+  toggle.addEventListener('click', () => {
+    const open = toggle.getAttribute('aria-expanded') === 'true';
+    toggle.setAttribute('aria-expanded', String(!open)); toc.hidden = open;
+  });
+  links.forEach(a => a.addEventListener('click', () => {
+    if(mq.matches){ toggle.setAttribute('aria-expanded','false'); toc.hidden = true; }
+  }));
+
+  function spy(){
+    const offset = mq.matches ? 90 : 40;
+    let idx = 0;
+    targets.forEach((t, i) => { if(t.getBoundingClientRect().top - offset <= 0) idx = i; });
+    if(window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) idx = targets.length - 1;
+    links.forEach(a => a.classList.remove('active','parent-active'));
+    const a = links[idx]; if(!a) return;
+    a.classList.add('active');
+    const parentLi = a.closest('ol').closest('li');
+    if(parentLi){ parentLi.querySelector(':scope > a').classList.add('parent-active'); }
+    current.textContent = a.textContent.replace(/^\d\.\d/, m => m + ' ');
+    if(!mq.matches){
+      const r = a.getBoundingClientRect(), rail = document.querySelector('.rail').getBoundingClientRect();
+      if(r.top < rail.top + 40 || r.bottom > rail.bottom - 40){ a.scrollIntoView({block:'nearest'}); }
+    }
+    toTop.classList.toggle('hide', window.scrollY < 500);
+  }
+  let ticking = false;
+  window.addEventListener('scroll', () => { if(!ticking){ requestAnimationFrame(() => { spy(); ticking = false; }); ticking = true; } }, {passive:true});
+  spy();
+
+  toTop.addEventListener('click', () => window.scrollTo({top:0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'}));
+
+  const panel = document.getElementById('notePanel'), btn = document.getElementById('notesBtn');
+  function setNote(open){ panel.hidden = !open; btn.setAttribute('aria-expanded', String(open)); }
+  btn.addEventListener('click', () => setNote(panel.hidden));
+  document.getElementById('noteClose').addEventListener('click', () => { setNote(false); btn.focus(); });
+  document.addEventListener('keydown', e => { if(e.key === 'Escape' && !panel.hidden){ setNote(false); btn.focus(); } });
+})();
+</script>
+
+</body>
+</html>
