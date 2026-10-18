@@ -1,0 +1,1358 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Unit 9 · Load Balancer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+img{max-width:100%}
+[hidden]{display:none!important}
+
+/* Layout: two-column study page — sticky, independently scrolling contents rail on the left; reading column on the right. Rail becomes a sticky top bar on small screens. */
+:root{
+  --bg:#F3F5F6; --surface:#FFFFFF; --ink:#17212B; --muted:#56636F; --line:#D5DCE1;
+  --accent:#0B6B75; --accent-soft:#DFEEEF; --warm:#A85A16; --warm-soft:#FAEEE0;
+  --code-bg:#EBF0F2; --good:#2E7D4F; --bad:#B23B3B;
+  --font:"IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --rail:270px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F1519; --surface:#151D23; --ink:#E2E8EC; --muted:#94A3AE; --line:#2A363F;
+  --accent:#55C2CA; --accent-soft:#123038; --warm:#E3A466; --warm-soft:#2D2218;
+  --code-bg:#1B252C; --good:#6FCB94; --bad:#EC8A8A; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F1519; --surface:#151D23; --ink:#E2E8EC; --muted:#94A3AE; --line:#2A363F;
+  --accent:#55C2CA; --accent-soft:#123038; --warm:#E3A466; --warm-soft:#2D2218;
+  --code-bg:#1B252C; --good:#6FCB94; --bad:#EC8A8A; color-scheme:dark}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.65;margin:0}
+a{color:var(--accent);text-underline-offset:2px}
+a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+code,kbd{font-family:var(--mono);font-size:.88em;background:var(--code-bg);padding:.08em .35em;border-radius:4px}
+
+.shell{display:grid;grid-template-columns:var(--rail) minmax(0,1fr);max-width:1240px;margin:0 auto;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));gap:40px}
+
+/* ---------- Contents rail ---------- */
+.rail{position:sticky;top:env(safe-area-inset-top, 0px);height:100vh;overflow-y:auto;padding-block:32px;
+  scrollbar-width:thin;overscroll-behavior:contain}
+.rail-head{display:flex;flex-direction:column;align-items:flex-start;gap:14px;position:sticky;top:-32px;z-index:2;background:var(--bg);padding-block:32px 4px;margin-top:-32px;margin-bottom:0}
+.back{display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:var(--ink);font-size:.85rem;font-weight:500;
+  border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 12px 6px 9px}
+.back:hover{border-color:var(--accent);color:var(--accent)}
+.rail h2{font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 12px;font-weight:600}
+.toc-toggle{display:none}
+.toc ol{list-style:none;margin:0;padding:0}
+.toc li{margin:0}
+.toc a{display:block;text-decoration:none;color:var(--muted);font-size:.9rem;line-height:1.35;padding:6px 10px;border-left:2px solid var(--line)}
+.toc a:hover{color:var(--ink)}
+.toc ol ol a{padding-left:24px;font-size:.84rem}
+.toc a.active{color:var(--accent);border-left-color:var(--accent);background:var(--accent-soft);font-weight:600}
+.toc a.parent-active{color:var(--ink);border-left-color:var(--accent)}
+.toc a{text-align:left;hyphens:none;scroll-margin-top:140px;scroll-margin-bottom:24px}
+.toc .num{font-family:var(--mono);font-size:.8em;margin-right:6px}
+
+/* ---------- Main ---------- */
+main{min-width:0;padding-block:40px 120px;max-width:780px}
+p,li,figcaption,.note p{text-align:justify;hyphens:auto;-webkit-hyphens:auto}
+header.unit{border-bottom:1px solid var(--line);padding-bottom:28px;margin-bottom:8px}
+.eyebrow{font-family:var(--mono);font-size:.8rem;color:var(--accent);letter-spacing:.06em;margin:0 0 8px;text-align:left}
+h1{font-size:clamp(1.9rem,4.4vw,2.6rem);line-height:1.15;margin:0 0 14px;font-weight:700;text-wrap:balance;letter-spacing:-.01em}
+h2{font-size:1.6rem;line-height:1.25;margin:64px 0 12px;text-wrap:balance;font-weight:700}
+h3{font-size:1.2rem;line-height:1.3;margin:44px 0 8px;text-wrap:balance;font-weight:600}
+h4{font-size:1rem;margin:26px 0 6px;font-weight:600}
+h2 .num,h3 .num{font-family:var(--mono);color:var(--accent);font-weight:500;margin-right:10px;font-size:.85em}
+.lede{font-size:1.08rem;color:var(--muted);margin:0}
+.meta{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:16px;font-size:.85rem;color:var(--muted)}
+.meta span{white-space:nowrap}
+ul,ol{padding-left:1.3em}
+li{margin:4px 0}
+.src{font-size:.72em;vertical-align:super;line-height:0;text-decoration:none;font-family:var(--mono);margin-left:1px}
+
+/* callouts */
+.callout{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:14px 18px;margin:20px 0}
+.callout.tip{border-left:4px solid var(--accent)}
+.callout.warn{border-left:4px solid var(--warm);background:var(--warm-soft)}
+.callout .label{display:block;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--muted);margin-bottom:4px;text-align:left}
+.callout p{margin:4px 0}
+
+.prosCons{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:16px 0}
+.prosCons div{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 16px;min-width:0}
+.prosCons h4{margin:4px 0;font-size:.85rem;letter-spacing:.06em;text-transform:uppercase}
+.prosCons .pro h4{color:var(--good)} .prosCons .con h4{color:var(--bad)}
+.prosCons ul{margin:4px 0;padding-left:1.1em}
+
+blockquote{margin:18px 0;padding:8px 18px;border-left:3px solid var(--warm);color:var(--ink);font-style:italic}
+blockquote cite{display:block;font-style:normal;font-size:.85rem;color:var(--muted);margin-top:4px}
+
+/* figures + tables */
+figure{margin:26px 0;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px}
+.figwrap{overflow-x:auto}
+figure svg{display:block;width:100%;height:auto;min-width:520px}
+figcaption{font-size:.88rem;color:var(--muted);margin-top:10px;border-top:1px dashed var(--line);padding-top:8px}
+figcaption b{color:var(--ink);font-family:var(--mono);font-weight:500;margin-right:4px}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem;min-width:520px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;font-size:.8rem;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+td code{white-space:nowrap}
+table.hist td code{white-space:normal;word-break:break-word}
+.tcap{caption-side:top;text-align:left;font-size:.88rem;color:var(--muted);padding-bottom:8px}
+.tcap b{color:var(--ink);font-family:var(--mono);font-weight:500;margin-right:4px}
+
+table.tt td[colspan],table.tt td.g,table.tt td.o,table.tt td.b{text-align:center;font-weight:500}
+table.tt td.g{background:color-mix(in srgb, var(--good) 18%, transparent)}
+table.tt td.o{background:color-mix(in srgb, #D9B300 22%, transparent)}
+table.tt td.b{background:color-mix(in srgb, var(--bad) 18%, transparent)}
+table.tt{table-layout:fixed}
+table.tt th:first-child,table.tt td:first-child{width:18%}
+table.tt th,table.tt td{border:1px solid var(--line)}
+table.tt th:not(:first-child){text-align:center}
+/* svg tokens */
+.s-box{fill:var(--surface);stroke:var(--line);stroke-width:1.5}
+.s-acc{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5}
+.s-warm{fill:var(--warm-soft);stroke:var(--warm);stroke-width:1.5}
+.s-line{stroke:var(--muted);stroke-width:1.5;fill:none}
+.s-dash{stroke:var(--muted);stroke-width:1.3;fill:none;stroke-dasharray:5 4}
+.s-t{fill:var(--ink);font-family:var(--font);font-size:13px}
+.s-tb{fill:var(--ink);font-family:var(--font);font-size:13px;font-weight:600}
+.s-ts{fill:var(--muted);font-family:var(--font);font-size:11px}
+.s-tm{fill:var(--muted);font-family:var(--mono);font-size:11px}
+.s-dot{fill:var(--accent)} .s-dot2{fill:var(--warm)}
+.s-arrow{fill:var(--muted)}
+@media (prefers-reduced-motion: reduce){.anim{display:none}}
+
+/* resource cards */
+.res{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:16px 0}
+.res a{display:block;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:12px 14px;text-decoration:none;color:var(--ink);min-width:0}
+.res a:hover{border-color:var(--accent)}
+.res b{display:block;font-size:.95rem}
+.res span{display:block;font-size:.82rem;color:var(--muted);margin-top:2px}
+ol.sources{font-size:.88rem;padding-left:2.2em}
+ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
+
+/* floating buttons */
+.fab{position:fixed;right:calc(18px + env(safe-area-inset-right, 0px));width:46px;height:46px;border-radius:50%;
+  border:1px solid var(--line);background:var(--surface);color:var(--ink);display:grid;place-items:center;cursor:pointer;
+  box-shadow:0 4px 14px rgba(0,0,0,.12);z-index:40;transition:opacity .2s, transform .2s}
+.fab svg{width:20px;height:20px}
+#toTop{bottom:calc(18px + env(safe-area-inset-bottom, 0px))}
+#notesBtn{bottom:calc(74px + env(safe-area-inset-bottom, 0px));background:var(--warm-soft);border-color:var(--warm);color:var(--warm)}
+#toTop.hide{opacity:0;pointer-events:none;transform:translateY(8px)}
+
+/* key-terms note widget */
+.note{position:fixed;right:calc(18px + env(safe-area-inset-right, 0px));bottom:calc(130px + env(safe-area-inset-bottom, 0px));
+  width:min(380px,calc(100vw - 36px));max-height:min(70vh,620px);overflow:auto;z-index:45;
+  background:var(--warm-soft);border:1px solid var(--warm);border-radius:12px;padding:0 18px 16px;
+  box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.note-head{position:sticky;top:0;background:var(--warm-soft);display:flex;justify-content:space-between;align-items:center;padding:14px 0 8px;border-bottom:1px dashed var(--warm)}
+.note-head strong{font-size:.95rem}
+.note-head button{border:0;background:none;color:var(--ink);font-size:1.3rem;cursor:pointer;line-height:1;padding:4px 8px}
+.note dl{margin:8px 0 0}
+.note dt{font-weight:600;font-size:.9rem;margin-top:10px}
+.note dd{margin:2px 0 0;font-size:.85rem;color:var(--ink);text-align:justify;hyphens:auto}
+.note h5{font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--warm);margin:16px 0 0}
+
+/* ---------- small screens ---------- */
+@media (max-width: 960px){
+  .shell{display:block}
+  body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top, 0px);z-index:31;background:var(--surface)}
+  .rail{position:sticky;top:env(safe-area-inset-top, 0px);z-index:30;height:auto;max-height:none;overflow:visible;
+    background:var(--surface);border-bottom:1px solid var(--line);padding:0;
+    margin-left:calc(-1 * max(16px, env(safe-area-inset-left, 0px)));margin-right:calc(-1 * max(16px, env(safe-area-inset-right, 0px)));
+    padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+  .rail-head{position:static;flex-direction:row;align-items:center;justify-content:space-between;padding-block:10px;margin-top:0;background:transparent}
+  .rail h2{display:none}
+  .toc-toggle{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);
+    border-radius:8px;padding:6px 10px;font:500 .85rem var(--font);cursor:pointer;min-width:0;max-width:72%}
+  .toc-toggle span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .toc{max-height:60vh;overflow-y:auto;padding-bottom:12px}
+  .toc[hidden]{display:none!important}
+  html{scroll-padding-top:70px}
+  main{padding-top:24px}
+}
+@media (min-width: 961px){ .toc[hidden]{display:block!important} }
+/* ---------- shared additions (from Unit 7) ---------- */
+figure img{display:block;margin:0 auto;max-width:560px;width:100%;height:auto;border-radius:8px;background:#fff}
+pre{font-family:var(--mono);font-size:.84rem;line-height:1.55;background:var(--code-bg);border-radius:10px;padding:12px 14px;overflow-x:auto;margin:16px 0}
+pre code{background:none;padding:0;font-size:inherit}
+pre .c{color:var(--muted)}
+.ctrl{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin-top:12px}
+.ctrl .count{font:500 .85rem var(--mono);color:var(--muted)}
+.step-text{margin:10px 0 0;min-height:3.4em;font-size:.93rem}
+.st path{stroke:var(--muted);stroke-width:1.3;fill:none;stroke-dasharray:4 4;opacity:.45}
+.st.on path{stroke-dasharray:none;opacity:1;stroke-width:2.6}
+.st.req.on path{stroke:var(--accent)} .st.res.on path{stroke:var(--warm)}
+.st.done path{opacity:.75}
+.wrr{display:grid;gap:14px}
+.wrr-servers{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.wrr-servers div{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
+.wrr-servers label{display:flex;justify-content:space-between;align-items:center;font-size:.88rem;font-weight:600}
+.wrr-servers input{width:64px;font:500 .95rem var(--mono);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:4px 6px}
+.wrr-servers small{display:block;font-size:.78rem;color:var(--muted);margin-top:4px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:600 .82rem var(--mono);border-radius:6px;padding:4px 9px;border:1px solid var(--line);background:var(--bg)}
+.chip.A{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.chip.B{background:var(--warm-soft);border-color:var(--warm);color:var(--warm)}
+.chip.C{background:color-mix(in srgb, var(--good) 14%, transparent);border-color:var(--good);color:var(--good)}
+.wrr .hint{font-size:.82rem;color:var(--muted);margin:0}
+.wrr .out{font-size:.9rem}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;border-right:1px solid var(--line);background:var(--bg);color:var(--ink);font:500 .85rem var(--font);padding:7px 14px;cursor:pointer}
+.seg button:last-child{border-right:0}
+.seg button:hover:not(:disabled){background:var(--accent-soft)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--surface)}
+.seg button:disabled{color:var(--muted);opacity:.55;cursor:default}
+tr.grp td{background:var(--accent-soft);color:var(--accent);font-size:.74rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:6px 10px}
+.wrr-servers input:disabled{opacity:.45}
+.wrr-servers label.mnt{display:flex;justify-content:flex-start;gap:6px;font-weight:500;font-size:.8rem;color:var(--ink);margin-bottom:2px}
+.wrr-servers label.mnt input{width:auto;accent-color:var(--warm)}
+/* ---------- Unit 8 additions ---------- */
+.sim{display:grid;gap:12px}
+.sim-ctrls{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.sim-ctrls .lbl{font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-right:6px}
+.sim-ctrls > div{display:flex;align-items:center;flex-wrap:wrap;gap:4px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+.stat{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
+.stat b{display:block;font:600 1.25rem var(--mono);color:var(--ink)}
+.stat span{display:block;font-size:.76rem;color:var(--muted);line-height:1.3;text-align:left}
+.stat.badv b{color:var(--bad)} .stat.warnv b{color:var(--warm)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.8rem;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+.legend i.sq{border-radius:2px}
+.sim-out{font-size:.9rem;margin:0}
+.s-hit{fill:var(--accent)} .s-miss{fill:var(--warm)} .s-stale{fill:var(--bad)}
+.s-store{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1}
+.s-ver{fill:var(--code-bg);stroke:var(--line);stroke-width:1}
+.s-xfer{stroke:var(--accent);stroke-width:2;fill:none}
+.s-xfer.red{stroke:var(--warm);stroke-dasharray:3 3}
+.terms{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:16px 0}
+.terms div{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 14px;min-width:0}
+.terms b{display:block;font-size:.92rem}
+.terms span{display:block;font-size:.85rem;color:var(--muted);text-align:justify;hyphens:auto}
+.fine{font-size:.82rem;color:var(--muted)}
+.sim .seg button:hover:not(:disabled){background:var(--bg)}
+.sim .seg button[aria-pressed="true"],.sim .seg button[aria-pressed="true"]:hover:not(:disabled){background:var(--accent);color:var(--surface)}
+/* ---------- theme toggle ---------- */
+.theme-btn{display:inline-grid;place-items:center;width:34px;height:34px;flex:none;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;cursor:pointer;padding:0}
+.theme-btn:hover{border-color:var(--accent);color:var(--accent)}
+.theme-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.theme-btn svg{width:17px;height:17px;display:block}
+.theme-btn .i-sun{display:none}
+:root[data-theme="dark"] .theme-btn .i-sun{display:block}
+:root[data-theme="dark"] .theme-btn .i-moon{display:none}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]) .theme-btn .i-sun{display:block}
+  :root:not([data-theme="light"]) .theme-btn .i-moon{display:none}
+}
+.rail-actions{display:flex;align-items:center;gap:8px;min-width:0}
+/* ---------- Unit 9 additions ---------- */
+.btn{border:1px solid var(--line);background:var(--bg);color:var(--ink);font:500 .85rem var(--font);border-radius:8px;padding:7px 14px;cursor:pointer}
+.btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.btn.primary:hover:not(:disabled){color:var(--surface);filter:brightness(1.08)}
+.btn.danger{border-color:var(--bad);color:var(--bad)}
+.srv{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}
+.srv > div{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
+.srv > div.over{border-color:var(--bad)}
+.srv > div.isdown{border-style:dashed}
+.srv h4{margin:0 0 2px;font-size:.88rem;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.srv h4 label{font-weight:500;font-size:.78rem;color:var(--muted);display:flex;gap:4px;align-items:center;cursor:pointer}
+.srv h4 input{accent-color:var(--bad)}
+.srv dl{display:grid;grid-template-columns:auto auto;gap:1px 10px;margin:4px 0 0;font-size:.8rem}
+.srv dt{color:var(--muted)} .srv dd{margin:0;font-family:var(--mono);text-align:right}
+.srv dd.bad{color:var(--bad);font-weight:600} .srv dd.good{color:var(--good)}
+.s-down{fill:color-mix(in srgb, var(--bad) 10%, var(--surface));stroke:var(--bad);stroke-width:1.5;stroke-dasharray:5 3}
+.s-track{fill:var(--code-bg)}
+.s-q{fill:var(--accent)} .s-q.over{fill:var(--bad)}
+.s-req{fill:var(--accent)} .s-fail{fill:var(--bad)}
+.s-bad{fill:var(--bad);font-family:var(--font);font-size:11px;font-weight:600}
+.flow{stroke:var(--accent);stroke-width:2.2;fill:none;stroke-dasharray:6 6}
+.flow.off{stroke:var(--line);stroke-dasharray:3 5}
+.flow.broken{stroke:var(--bad);stroke-dasharray:3 5}
+.hb{stroke:var(--warm);stroke-width:2;fill:none;stroke-dasharray:3 5}
+.hb.off{stroke:var(--line)}
+@media (prefers-reduced-motion: no-preference){
+  .flow:not(.off):not(.broken){animation:flow 1s linear infinite}
+  .hb:not(.off){animation:flow .7s linear infinite}
+}
+@keyframes flow{to{stroke-dashoffset:-24}}
+.vip{transition:transform .8s ease}
+@media (prefers-reduced-motion: reduce){.vip{transition:none}}
+.inspect{display:grid;grid-template-columns:minmax(110px,auto) minmax(0,1fr);gap:4px 12px;margin:10px 0 0;font-size:.86rem;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.inspect dt{color:var(--muted);text-align:left}
+.inspect dd{margin:0;font-family:var(--mono);font-size:.84rem;word-break:break-word;text-align:left}
+.inspect dd mark{background:var(--warm-soft);color:var(--warm);border-radius:4px;padding:0 4px;font-weight:600}
+.inspect dd.dim{color:var(--muted)}
+.step-title{font-weight:600;margin:12px 0 0;text-align:left}
+.lbthink rect.lbbox{stroke:var(--warm);stroke-width:2.4}
+.pool.pick rect{fill:var(--warm-soft);stroke:var(--warm);stroke-width:2}
+.downtime{display:flex;align-items:center;gap:8px;font-size:.82rem;color:var(--muted)}
+.downtime .bar{flex:1;height:10px;border-radius:5px;background:var(--code-bg);overflow:hidden;min-width:80px}
+.downtime .bar i{display:block;height:100%;width:0;background:var(--bad);transition:width .3s}
+.legend span{display:inline-flex;align-items:center}
+.legend i{vertical-align:middle;flex:none}
+</style>
+<script>(function(){try{var t=localStorage.getItem('sysdes-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+
+<div class="shell">
+  <aside class="rail" aria-label="Contents">
+    <div class="rail-head">
+      <div class="rail-actions"><a class="back" href="index.html" title="Back to all units"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>All units</a><button type="button" class="theme-btn" id="themeBtn" aria-label="Switch to dark mode" title="Switch to dark mode"><svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg><svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg></button></div>
+      <h2>Contents</h2>
+      <button class="toc-toggle" id="tocToggle" aria-expanded="false" aria-controls="toc">
+        <span id="tocCurrent">Contents</span>
+        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.6" fill="none"/></svg>
+      </button>
+    </div>
+    <nav class="toc" id="toc" hidden>
+      <ol>
+        <li><a href="#overview"><span class="num">9.0</span>What a load balancer does</a>
+          <ol>
+            <li><a href="#health">Health checks</a></li>
+            <li><a href="#ssl">SSL termination</a></li>
+            <li><a href="#sticky">Session persistence</a></li>
+            <li><a href="#routing">Routing methods</a></li>
+            <li><a href="#simulate">Try it: routing</a></li>
+          </ol>
+        </li>
+        <li><a href="#active-passive"><span class="num">9.1</span>Active-passive</a>
+          <ol>
+            <li><a href="#keepalived">Example: a VRRP pair</a></li>
+          </ol>
+        </li>
+        <li><a href="#active-active"><span class="num">9.2</span>Active-active</a>
+          <ol>
+            <li><a href="#failover-sim">Try it: fail-over</a></li>
+          </ol>
+        </li>
+        <li><a href="#layer4"><span class="num">9.3</span>Layer 4 load balancing</a></li>
+        <li><a href="#layer7"><span class="num">9.4</span>Layer 7 load balancing</a>
+          <ol>
+            <li><a href="#l4-vs-l7">Layer 4 vs layer 7</a></li>
+            <li><a href="#stepper">Step through a request</a></li>
+            <li><a href="#elb">Listeners in AWS</a></li>
+          </ol>
+        </li>
+        <li><a href="#horizontal"><span class="num">9.5</span>Horizontal scaling</a>
+          <ol>
+            <li><a href="#clones">Clones</a></li>
+            <li><a href="#sessions">Where sessions go</a></li>
+            <li><a href="#hs-cons">Disadvantages</a></li>
+          </ol>
+        </li>
+        <li><a href="#inside"><span class="num">9.6</span>Inside software load balancers</a>
+          <ol>
+            <li><a href="#nginx">NGINX: event-driven workers</a></li>
+            <li><a href="#queue">HAProxy: queue, don’t overload</a></li>
+          </ol>
+        </li>
+        <li><a href="#cons"><span class="num">9.7</span>Disadvantages</a>
+          <ol>
+            <li><a href="#beyond">Beyond the primer</a></li>
+          </ol>
+        </li>
+        <li><a href="#resources"><span class="num">9.8</span>Resources</a></li>
+        <li><a href="#sources"><span class="num">9.9</span>Sources</a></li>
+      </ol>
+    </nav>
+  </aside>
+
+  <main id="top">
+    <header class="unit">
+      <p class="eyebrow">SYSTEM DESIGN PRIMER · UNIT 9</p>
+      <h1>Load balancer</h1>
+      <p class="lede">A <b>load balancer</b> distributes incoming client requests to computing resources such as application servers and databases, and returns each resource’s response to the right client.<a class="src" href="#s1">[1]</a> This unit covers what a load balancer protects against, how it picks a server, how to stop the load balancer itself from failing (<b>active-passive</b> and <b>active-active</b>), the difference between <b>layer 4</b> and <b>layer 7</b> balancing, and how load balancers make <b>horizontal scaling</b> possible.</p>
+      <div class="meta"><span>Primer section · Load balancer</span><span>HAProxy architecture guide</span><span>Inside NGINX</span><span>Wikipedia · Load balancing</span><span>AWS · ELB listeners</span></div>
+    </header>
+
+    <!-- ===================== 9.0 ===================== -->
+    <section id="overview">
+      <h2><span class="num">9.0</span>What a load balancer does</h2>
+      <p>Clients send requests to one address: the load balancer. It forwards each request to one of several servers, waits for the answer and passes it back to the client (Figure 9.1).<a class="src" href="#s1">[1]</a> Ricky Ho calls this the load balancer pattern: a <b>dispatcher</b> picks a <b>worker</b> by some policy, and works best when the application is <b>stateless</b>, so any worker can handle any request.<a class="src" href="#s12">[12]</a></p>
+      <figure>
+        <img src="data:image/webp;base64,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" alt="A client sends a request to a dispatcher. The dispatcher picks a worker from a worker pool (by random, round robin, least busy, sticky session or cookies, or request parameters), waits for its response and forwards the response to the client. Each worker has its own storage.">
+        <figcaption><b>Figure 9.1</b> The dispatcher (load balancer) picks a worker, waits for its response and forwards it to the client. Image from the primer,<a class="src" href="#s1">[1]</a> originally from Ricky Ho’s <i>Scalable system design patterns</i>.<a class="src" href="#s12">[12]</a></figcaption>
+      </figure>
+      <p>The primer says load balancers are effective at:<a class="src" href="#s1">[1]</a></p>
+      <ul>
+        <li>preventing requests from going to <b>unhealthy servers</b>;</li>
+        <li>preventing <b>overloading</b> resources;</li>
+        <li>helping to eliminate a <b>single point of failure</b> (SPOF): one component whose failure stops the whole service.</li>
+      </ul>
+      <p>Because clients only ever talk to the load balancer, the servers behind it stay hidden. Clients cannot reach them directly, which can also help security.<a class="src" href="#s5">[5]</a></p>
+      <p>Load balancers come as <b>hardware</b>, which is expensive, or as <b>software</b> such as <b>HAProxy</b>.<a class="src" href="#s1">[1]</a> The first example in the HAProxy architecture guide is typical: a web server saturated by a CPU-heavy application is replaced by HAProxy in front of four cheap servers.<a class="src" href="#s3">[3]</a> Section 9.6 looks inside HAProxy and NGINX.</p>
+
+      <h3 id="health">Health checks</h3>
+      <p>To keep requests away from unhealthy servers, a load balancer <b>health-checks</b> each server: it polls them regularly, takes failed ones out of the pool and puts them back when they recover.<a class="src" href="#s5">[5]</a> Listing 9.1 shows the HAProxy guide’s first example. Each <code>check</code> turns on health checks for that server, and <code>option httpchk</code> makes the check an HTTP request rather than just a TCP connection.<a class="src" href="#s3">[3]</a></p>
+<pre><code><span class="c"># HAProxy 1.2-era syntax, from the architecture guide’s example 1</span>
+listen webfarm 192.168.1.1:80
+   mode http
+   balance roundrobin                      <span class="c"># routing method (Table 9.1)</span>
+   cookie SERVERID insert indirect         <span class="c"># session persistence (below)</span>
+   option httpchk HEAD /index.html HTTP/1.0  <span class="c"># health check request</span>
+   server webA 192.168.1.11:80 cookie A check
+   server webB 192.168.1.12:80 cookie B check
+   server webC 192.168.1.13:80 cookie C check
+   server webD 192.168.1.14:80 cookie D check</code></pre>
+      <p class="fine"><b>Listing 9.1</b> HAProxy in front of four web servers.<a class="src" href="#s3">[3]</a> Modern HAProxy splits <code>listen</code> into <code>frontend</code> and <code>backend</code> sections, but the ideas are the same.</p>
+
+      <h3 id="ssl">SSL termination</h3>
+      <p>With <b>SSL termination</b>, the load balancer decrypts incoming requests and encrypts the servers’ responses, so the backend servers do not have to do this potentially expensive work. It also removes the need to install <b>X.509 certificates</b> on every server.<a class="src" href="#s1">[1]</a> An X.509 certificate binds a public key to an identity such as a hostname. It is signed by a <b>certificate authority</b>, and it is what a browser checks during the TLS handshake of an HTTPS connection.<a class="src" href="#s10">[10]</a></p>
+      <p>AWS describes the same thing: to accept HTTPS, you deploy an X.509 certificate on the load balancer, which decrypts requests before sending them on. To avoid terminating TLS there, you pass the traffic through as plain TCP and install the certificates on the servers instead.<a class="src" href="#s8">[8]</a> Wikipedia notes the trade-off: termination saves server CPU, but it can turn the load balancer into a bottleneck, and sometimes adding web servers is cheaper.<a class="src" href="#s5">[5]</a></p>
+
+      <h3 id="sticky">Session persistence</h3>
+      <p>If the web apps do not keep track of sessions themselves, the load balancer can issue a <b>cookie</b> and route all of one client’s requests to the same instance. This is <b>session persistence</b>, also called <b>sticky sessions</b>.<a class="src" href="#s1">[1]</a> HAProxy’s <b>cookie insertion</b> (Listing 9.1) works like this:<a class="src" href="#s3">[3]</a></p>
+      <ol>
+        <li>A request with no cookie is load-balanced as usual.</li>
+        <li>The response gets a cookie naming the server, e.g. <code>SERVERID=B</code>.</li>
+        <li>Later requests carrying that cookie go to the same server. HAProxy removes the cookie before forwarding (the <code>indirect</code> option), so the server never sees it.</li>
+        <li>If that server dies, the client is sent to another server and given a new cookie.</li>
+      </ol>
+      <p>If the application already sets its own session cookie, HAProxy can instead <b>prefix</b> it with the server name (<code>JSESSIONID=A~123</code>) and strip the prefix before forwarding.<a class="src" href="#s3">[3]</a> Figure 9.2 combines SSL termination and cookie insertion.</p>
+      <figure>
+        <div class="figwrap">
+          <svg viewBox="0 0 680 368" role="img" aria-labelledby="f2t">
+            <title id="f2t">Sequence diagram. The client sends an encrypted request with no cookie to the load balancer, which decrypts it and forwards it as plain HTTP to server B. B replies; the load balancer re-encrypts the reply and adds Set-Cookie SERVERID=B. A later request carrying the cookie is sent to server B again, with the cookie removed.</title>
+            <defs><marker id="m92" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="s-arrow"/></marker></defs>
+            <rect x="20" y="12" width="100" height="40" rx="8" class="s-box"/><text x="70" y="37" text-anchor="middle" class="s-tb">Client</text>
+            <rect x="222" y="8" width="136" height="48" rx="8" class="s-acc"/><text x="290" y="28" text-anchor="middle" class="s-tb">Load balancer</text><text x="290" y="46" text-anchor="middle" class="s-ts">holds the X.509 cert</text>
+            <rect x="430" y="12" width="100" height="40" rx="8" class="s-box"/><text x="480" y="37" text-anchor="middle" class="s-tb">Server A</text>
+            <rect x="560" y="12" width="100" height="40" rx="8" class="s-box"/><text x="610" y="37" text-anchor="middle" class="s-tb">Server B</text>
+            <text x="180" y="74" text-anchor="middle" class="s-ts" style="fill:var(--accent);font-weight:600">HTTPS · encrypted</text>
+            <text x="385" y="68" text-anchor="middle" class="s-ts" style="fill:var(--warm);font-weight:600">HTTP · plain,</text><text x="385" y="81" text-anchor="middle" class="s-ts" style="fill:var(--warm);font-weight:600">inside the network</text>
+            <path d="M70,56 V360 M290,58 V360 M480,52 V360 M610,52 V360" class="s-dash"/>
+            <!-- request 1 -->
+            <text x="180" y="99" text-anchor="middle" class="s-tm" style="fill:var(--ink)">GET /cart  (no cookie)</text>
+            <path d="M72,106 H286" class="s-line" style="stroke:var(--accent)" marker-end="url(#m92)"/>
+            <rect x="242" y="118" width="96" height="24" rx="5" class="s-warm"/><text x="290" y="134" text-anchor="middle" class="s-ts" style="fill:var(--ink)">decrypts TLS</text>
+            <text x="385" y="166" text-anchor="middle" class="s-tm" style="fill:var(--ink)">GET /cart</text>
+            <text x="385" y="190" text-anchor="middle" class="s-ts">round robin picks B</text>
+            <path d="M292,173 H606" class="s-line" style="stroke:var(--warm)" marker-end="url(#m92)"/>
+            <text x="385" y="208" text-anchor="middle" class="s-tm" style="fill:var(--ink)">200 OK</text>
+            <path d="M608,215 H294" class="s-line" marker-end="url(#m92)"/>
+            <text x="180" y="232" text-anchor="middle" class="s-tm" style="fill:var(--ink)">200 OK (re-encrypted)</text>
+            <text x="180" y="246" text-anchor="middle" class="s-tm" style="fill:var(--accent);font-weight:500">Set-Cookie: SERVERID=B</text>
+            <path d="M288,254 H74" class="s-line" style="stroke:var(--accent)" marker-end="url(#m92)"/>
+            <!-- later request -->
+            <path d="M20,272 H670" class="s-dash" style="stroke-dasharray:2 4"/><text x="180" y="268" text-anchor="middle" class="s-ts">a later request</text>
+            <text x="180" y="291" text-anchor="middle" class="s-tm" style="fill:var(--ink)">GET /checkout</text>
+            <text x="180" y="305" text-anchor="middle" class="s-tm" style="fill:var(--accent);font-weight:500">Cookie: SERVERID=B</text>
+            <path d="M72,313 H286" class="s-line" style="stroke:var(--accent)" marker-end="url(#m92)"/>
+            <text x="385" y="324" text-anchor="middle" class="s-tm" style="fill:var(--ink)">GET /checkout</text><text x="385" y="338" text-anchor="middle" class="s-ts">cookie removed</text>
+            <path d="M292,345 H606" class="s-line" style="stroke:var(--warm)" marker-end="url(#m92)"/>
+          </svg>
+        </div>
+        <figcaption><b>Figure 9.2</b> SSL termination and cookie-based session persistence. Only the load balancer needs a certificate, and the cookie keeps the client on server B. Based on the primer<a class="src" href="#s1">[1]</a> and HAProxy’s <code>cookie SERVERID insert indirect</code>.<a class="src" href="#s3">[3]</a></figcaption>
+      </figure>
+      <div class="callout warn"><span class="label">The catch</span><p>Sticky sessions give no automatic fail-over: if the server holding a session fails, that session is lost.<a class="src" href="#s5">[5]</a> Section 9.5 shows the usual fix, which is to keep sessions off the servers altogether.</p></div>
+
+      <h3 id="routing">Routing methods</h3>
+      <p>Load balancers can route traffic based on various metrics. Table 9.1 lists the ones the primer names.<a class="src" href="#s1">[1]</a></p>
+      <div class="tablewrap">
+        <table>
+          <caption class="tcap"><b>Table 9.1</b> Ways a load balancer chooses a server</caption>
+          <thead><tr><th>Method</th><th>Decides using</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><b>Random</b></td><td>Nothing about the servers</td><td>One of the simple algorithms.<a class="src" href="#s5">[5]</a></td></tr>
+            <tr><td><b>Round robin</b></td><td>The next server in the list</td><td>Simple, but treats every server the same, whatever its capacity.<a class="src" href="#s9">[9]</a></td></tr>
+            <tr><td><b>Weighted round robin</b></td><td>A weight per server</td><td>Weights are positive integers; a server with weight 4 gets 4× the requests of one with weight 1.<a class="src" href="#s9">[9]</a></td></tr>
+            <tr><td><b>Least loaded</b></td><td>Current load, e.g. active connections</td><td>Wikipedia calls the simple form <b>least connections</b>. Advanced versions also use reported load, response times and health.<a class="src" href="#s5">[5]</a></td></tr>
+            <tr><td><b>Session / cookies</b></td><td>A cookie or session ID</td><td>Keeps one client on one server (above).<a class="src" href="#s1">[1]</a></td></tr>
+            <tr><td><b>Layer 4</b></td><td>IP addresses and ports</td><td>Section 9.3.<a class="src" href="#s1">[1]</a></td></tr>
+            <tr><td><b>Layer 7</b></td><td>URL, headers, cookies, message content</td><td>Section 9.4.<a class="src" href="#s1">[1]</a></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The primer links an article on round robin versus <b>weighted round robin</b>. Its example has three servers benchmarked at about 100, 300 and 25 requests per second. Plain round robin gives the weakest server as many requests as the strongest, so it would normally be left out of the pool. Weights of 4, 12 and 1, set to reflect each server’s performance, keep it in the pool with a proportional share (Table 9.2).<a class="src" href="#s9">[9]</a></p>
+      <div class="tablewrap">
+        <table>
+          <caption class="tcap"><b>Table 9.2</b> Round robin vs weighted round robin, for the article’s three servers<a class="src" href="#s9">[9]</a></caption>
+          <thead><tr><th>Server</th><th>Benchmark</th><th>Round robin share</th><th>Weight</th><th>Weighted share (per 17 requests)</th></tr></thead>
+          <tbody>
+            <tr><td><b>S1</b></td><td>~100 req/s</td><td>1 in 3 (33%)</td><td>4</td><td>4 of 17 (≈24%)</td></tr>
+            <tr><td><b>S2</b></td><td>~300 req/s</td><td>1 in 3 (33%)</td><td>12</td><td>12 of 17 (≈71%)</td></tr>
+            <tr><td><b>S3</b></td><td>~25 req/s</td><td>1 in 3 (33%)</td><td>1</td><td>1 of 17 (≈6%)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="simulate">Try it: routing</h3>
+      <p>Figure 9.3 sends 340 requests per second to the servers in Table 9.2 for two seconds, which is 80% of their combined capacity. Pick a method, take a server down, switch health checks off, then press <b>Play</b>.</p>
+      <figure>
+        <div class="sim" id="rsim">
+          <div class="sim-ctrls">
+            <div><span class="lbl">Method</span><span class="seg" role="group" aria-label="Routing method" id="algSeg"><button type="button" data-v="random">Random</button><button type="button" data-v="rr" aria-pressed="true">Round robin</button><button type="button" data-v="wrr">Weighted RR</button><button type="button" data-v="least">Least loaded</button></span></div>
+            <div><span class="lbl">Health checks</span><span class="seg" role="group" aria-label="Health checks" id="hcSeg"><button type="button" data-v="on" aria-pressed="true">On</button><button type="button" data-v="off">Off</button></span></div>
+            <div><button type="button" class="btn primary" id="simPlay">Play</button></div>
+          </div>
+          <div class="figwrap">
+            <svg viewBox="0 0 680 250" role="img" aria-labelledby="f3t" id="rsvg">
+              <title id="f3t">A load balancer forwarding requests to three servers, updated by the result below.</title>
+              <rect x="20" y="92" width="130" height="66" rx="10" class="s-acc"/>
+              <text x="85" y="120" text-anchor="middle" class="s-tb">Load balancer</text>
+              <text x="85" y="140" text-anchor="middle" class="s-tm">340 req/s in</text>
+              <text x="85" y="186" text-anchor="middle" class="s-tm" id="rclock">t = 0.00 s</text>
+              <g id="rlines"></g>
+              <g id="rservers"></g>
+              <g id="rdots"></g>
+            </svg>
+          </div>
+          <div class="chips" id="rchips" aria-label="First 17 assignments"></div>
+          <div class="srv" id="rcards"></div>
+          <p class="sim-out" id="rout" aria-live="polite"></p>
+        </div>
+        <figcaption><b>Figure 9.3</b> Interactive: routing methods and health checks. Servers and weights from Table 9.2.<a class="src" href="#s9">[9]</a> Chips show the first 17 choices. A simplified model: each server handles one request at a time at its benchmark rate and queues the rest; “least loaded” picks the server with the fewest requests waiting or in progress; random is seeded so replays match. The article gives only the weighted ratio, so this model interleaves the weighted turns.</figcaption>
+      </figure>
+      <p>Things to notice in Figure 9.3:</p>
+      <ul>
+        <li><b>Round robin:</b> S3 gets a third of the traffic but can handle only a fraction of it, so its queue keeps growing and waits reach seconds. This is the overloading a load balancer should prevent.</li>
+        <li><b>Weighted round robin:</b> every server runs at the same 80% of its capacity and queues stay short.</li>
+        <li><b>Least loaded:</b> no weights are configured, yet S2 drains its queue fastest and so receives the most requests.</li>
+        <li><b>Take a server down with health checks on:</b> the balancer stops using it and the others absorb its share, overloaded if the rest lack capacity. <b>Switch health checks off</b> and its share of requests simply fails.</li>
+      </ul>
+    </section>
+
+    <!-- ===================== 9.1 ===================== -->
+    <section id="active-passive">
+      <h2><span class="num">9.1</span>Active-passive</h2>
+      <p>A single load balancer is itself a single point of failure. To protect against failures, it is common to run <b>multiple load balancers</b>, in either active-passive or active-active mode.<a class="src" href="#s1">[1]</a> These are the two <b>fail-over</b> modes from Unit 6.<a class="src" href="#s11">[11]</a></p>
+      <p>In <b>active-passive</b> fail-over, the active server and a passive server on standby send each other <b>heartbeats</b>. If the heartbeat is interrupted, the passive server takes over the active server’s IP address and resumes service. Only the active server handles traffic.<a class="src" href="#s11">[11]</a></p>
+      <p>How long the outage lasts depends on the standby:<a class="src" href="#s11">[11]</a></p>
+      <ul>
+        <li><b>Hot standby:</b> the passive server is already running and can take over at once.</li>
+        <li><b>Cold standby:</b> it must start up first, so downtime is longer.</li>
+      </ul>
+      <p>Active-passive fail-over is also called <b>master-slave</b> fail-over.<a class="src" href="#s11">[11]</a></p>
+
+      <h3 id="keepalived">Example: a VRRP pair</h3>
+      <p>The HAProxy guide removes its single load balancer this way. Two load balancers, LB1 (192.168.1.3) and LB2 (192.168.1.4), share a <b>virtual IP</b> (VIP), 192.168.1.1, which is the address clients use. The <b>keepalived</b> tool runs the <b>VRRP</b> protocol between them:<a class="src" href="#s3">[3]</a></p>
+      <ul>
+        <li>LB1 has priority 101 and is the <b>master</b>, so it holds the VIP. LB2 has priority 100 and is the <b>backup</b>.</li>
+        <li>Every 2 seconds a script checks that HAProxy is still running; a passing check adds 2 to the node’s priority. If LB1’s check fails, its priority falls below LB2’s and the VIP moves to LB2.</li>
+      </ul>
+      <p>Clients keep using the same address throughout, which is why the passive server takes over the active one’s IP.</p>
+    </section>
+
+    <!-- ===================== 9.2 ===================== -->
+    <section id="active-active">
+      <h2><span class="num">9.2</span>Active-active</h2>
+      <p>In <b>active-active</b> fail-over, both servers manage traffic and spread the load between them. Something must tell clients about both:<a class="src" href="#s11">[11]</a></p>
+      <ul>
+        <li>if the servers are <b>public-facing</b>, DNS needs to know the public IPs of both;</li>
+        <li>if they are <b>internal-facing</b>, the application logic needs to know about both.</li>
+      </ul>
+      <p>Active-active fail-over is also called <b>master-master</b> fail-over.<a class="src" href="#s11">[11]</a> Load balancers deployed as a high-availability pair can also replicate their session persistence data between them.<a class="src" href="#s5">[5]</a></p>
+      <p>When one public-facing node fails, DNS has to stop handing out its address. Wikipedia notes that a short TTL helps divert traffic quickly.<a class="src" href="#s5">[5]</a> Until then, clients holding a cached answer keep trying the dead address (Unit 7).</p>
+
+      <h3 id="failover-sim">Try it: fail-over</h3>
+      <figure>
+        <div class="sim" id="fsim">
+          <div class="sim-ctrls">
+            <div><span class="lbl">Mode</span><span class="seg" role="group" aria-label="Fail-over mode" id="fModeSeg"><button type="button" data-v="ap" aria-pressed="true">Active-passive</button><button type="button" data-v="aa">Active-active</button></span></div>
+            <div><span class="lbl">Standby</span><span class="seg" role="group" aria-label="Standby" id="fStbSeg"><button type="button" data-v="hot" aria-pressed="true">Hot</button><button type="button" data-v="cold">Cold</button></span></div>
+            <div><button type="button" class="btn danger" id="fFail">Fail LB1</button></div>
+          </div>
+          <div class="figwrap">
+            <svg viewBox="0 0 680 290" role="img" aria-labelledby="f4t" id="fsvg">
+              <title id="f4t">Two load balancers in front of four servers. The current state is described in the text below.</title>
+              <rect x="20" y="16" width="150" height="66" rx="8" class="s-box"/>
+              <text x="95" y="38" text-anchor="middle" class="s-tb" id="fDnsH">Clients connect to</text>
+              <text x="95" y="56" text-anchor="middle" class="s-tm" id="fDns1">192.168.1.1</text>
+              <text x="95" y="72" text-anchor="middle" class="s-tm" id="fDns2">(the VIP)</text>
+              <rect x="20" y="118" width="150" height="56" rx="8" class="s-box"/>
+              <text x="95" y="151" text-anchor="middle" class="s-tb">Clients</text>
+              <path id="fc1" d="M170,138 C210,138 210,72 250,72" class="flow"/>
+              <path id="fc2" d="M170,156 C210,156 210,222 250,222" class="flow off"/>
+              <g id="f1paths"></g><g id="f2paths"></g>
+              <path id="fhb" d="M268,104 V190" class="hb"/>
+              <text x="276" y="150" class="s-ts" id="fhbT">heartbeat</text>
+              <g id="lb1"><rect x="250" y="40" width="160" height="64" rx="8" class="s-acc" id="lb1r"/>
+                <text x="330" y="62" text-anchor="middle" class="s-tb" id="lb1n">LB1 · 192.168.1.3</text>
+                <text x="330" y="80" text-anchor="middle" class="s-ts" id="lb1s">active · priority 101</text>
+                <text x="330" y="96" text-anchor="middle" class="s-bad" id="lb1x"></text></g>
+              <g id="lb2"><rect x="250" y="190" width="160" height="64" rx="8" class="s-box" id="lb2r"/>
+                <text x="330" y="212" text-anchor="middle" class="s-tb" id="lb2n">LB2 · 192.168.1.4</text>
+                <text x="330" y="230" text-anchor="middle" class="s-ts" id="lb2s">passive · priority 100</text>
+                <text x="330" y="246" text-anchor="middle" class="s-ts" id="lb2x"></text></g>
+              <g class="vip" id="fvip"><rect x="282" y="12" width="132" height="22" rx="11" class="s-warm"/><text x="348" y="27" text-anchor="middle" class="s-tm" style="fill:var(--ink)">VIP 192.168.1.1</text></g>
+              <g id="fservers"></g>
+            </svg>
+          </div>
+          <div class="legend" aria-hidden="true">
+            <span><i class="sq" style="background:var(--warm-soft);border:1px solid var(--warm);border-radius:6px;width:16px"></i>VIP (active-passive): the shared address clients use; it sits on the active load balancer</span>
+            <span><i class="sq" style="width:14px;height:3px;background:var(--warm)"></i>heartbeat</span>
+            <span><i class="sq" style="width:14px;height:3px;background:var(--accent)"></i>traffic</span>
+            <span><i class="sq" style="width:14px;height:3px;background:repeating-linear-gradient(90deg,var(--bad) 0 3px,transparent 3px 6px)"></i>broken path</span>
+          </div>
+          <div class="downtime"><span>Clients cut off</span><span class="bar"><i id="fDownBar"></i></span><span id="fDownT">none</span></div>
+          <p class="sim-out" id="fout" aria-live="polite"></p>
+        </div>
+        <figcaption><b>Figure 9.4</b> Interactive: load balancer fail-over. Active-passive uses the HAProxy guide’s VRRP pair: the orange tag is the virtual IP, which sits above whichever load balancer holds it and moves to LB2 on fail-over;<a class="src" href="#s3">[3]</a> active-active uses example public addresses in DNS.<a class="src" href="#s11">[11]</a> Timings are illustrative only; the bar compares relative outage lengths.</figcaption>
+      </figure>
+      <div class="prosCons">
+        <div class="con"><h4>Disadvantages: fail-over</h4><ul>
+          <li>Fail-over adds more hardware and additional complexity.<a class="src" href="#s11">[11]</a></li>
+          <li>Data written to the active system can be lost if it fails before replicating to the passive one.<a class="src" href="#s11">[11]</a></li>
+        </ul></div>
+      </div>
+    </section>
+
+    <!-- ===================== 9.3 ===================== -->
+    <section id="layer4">
+      <h2><span class="num">9.3</span>Layer 4 load balancing</h2>
+      <p>“Layer” refers to the OSI network model. <b>Layer 4</b> is the <b>transport layer</b> (TCP and UDP, covered in Unit 15), and <b>layer 7</b> is the <b>application layer</b> (HTTP).<a class="src" href="#s6">[6]</a><a class="src" href="#s7">[7]</a></p>
+      <p>Layer 4 load balancers look at transport-layer information to decide where to send a request: generally the <b>source and destination IP addresses and ports</b> in the packet header, but <b>not the contents</b> of the packet. They forward network packets to and from the upstream server, performing <b>Network Address Translation (NAT)</b>.<a class="src" href="#s1">[1]</a></p>
+      <p>NGINX’s glossary entry (the primer’s link) explains the NAT step:<a class="src" href="#s6">[6]</a></p>
+      <ol>
+        <li>The load balancer’s own IP address is the one published to clients, for example through DNS.</li>
+        <li>It decides using address information from the <b>first few packets</b> of the TCP stream.</li>
+        <li>It rewrites each packet’s <b>destination</b> address from its own to the chosen server’s, and on replies rewrites the <b>source</b> back to its own. Ports are sometimes rewritten too.</li>
+      </ol>
+      <p>Layer 4 balancers are often dedicated hardware with proprietary software, sometimes with special chips for NAT. Strictly, the name should be “layer 3/4”, since IP addresses belong to layer 3 and ports to layer 4.<a class="src" href="#s6">[6]</a></p>
+    </section>
+
+    <!-- ===================== 9.4 ===================== -->
+    <section id="layer7">
+      <h2><span class="num">9.4</span>Layer 7 load balancing</h2>
+      <p>Layer 7 load balancers look at the <b>application layer</b> to decide where to send requests. This can involve the contents of the <b>header</b>, the <b>message</b> and <b>cookies</b>. The balancer <b>terminates</b> the network traffic, reads the message, makes a load-balancing decision, then opens a connection to the selected server.<a class="src" href="#s1">[1]</a> It may instead reuse an existing connection kept open with HTTP keepalives. A device doing this is often called a <b>reverse proxy</b> (Unit 10).<a class="src" href="#s7">[7]</a></p>
+      <p>Because it knows what is being requested, a layer 7 balancer can send different traffic to different servers. The primer’s example: <b>video</b> traffic goes to servers that host videos, while more sensitive <b>billing</b> traffic goes to <b>security-hardened</b> servers.<a class="src" href="#s1">[1]</a> Content then does not need to be copied to every server.<a class="src" href="#s6">[6]</a> Reading the whole message also lets it compress or encrypt content and <b>buffer</b> slow clients so the servers are freed sooner.<a class="src" href="#s7">[7]</a></p>
+      <p>The cost: layer 4 balancing needs less time and computing resources, at the price of flexibility. The difference can be minimal on modern commodity hardware.<a class="src" href="#s1">[1]</a> The NGINX glossary goes further and calls it negligible in most situations.<a class="src" href="#s6">[6]</a></p>
+
+      <h3 id="l4-vs-l7">Layer 4 vs layer 7</h3>
+      <div class="tablewrap">
+        <table>
+          <caption class="tcap"><b>Table 9.3</b> Layer 4 and layer 7 load balancing side by side</caption>
+          <thead><tr><th></th><th>Layer 4</th><th>Layer 7</th></tr></thead>
+          <tbody>
+            <tr><td><b>OSI layer</b></td><td>Transport (strictly 3/4)</td><td>Application (strictly 5–7)<a class="src" href="#s6">[6]</a></td></tr>
+            <tr><td><b>Looks at</b></td><td>Source and destination IPs and ports</td><td>Headers, message, cookies, URL<a class="src" href="#s1">[1]</a></td></tr>
+            <tr><td><b>Reads the payload</b></td><td>No</td><td>Yes</td></tr>
+            <tr><td><b>Connections</b></td><td>Forwards packets, rewriting addresses (NAT)</td><td>Terminates the client’s connection, opens or reuses one to the server<a class="src" href="#s1">[1]</a><a class="src" href="#s7">[7]</a></td></tr>
+            <tr><td><b>Routing options</b></td><td>Fewer</td><td>By content, e.g. video vs billing<a class="src" href="#s1">[1]</a></td></tr>
+            <tr><td><b>Cost</b></td><td>Less time and computing</td><td>More CPU; small on modern hardware<a class="src" href="#s1">[1]</a></td></tr>
+            <tr><td><b>TLS certificate</b></td><td>On the servers, if traffic passes through as TCP</td><td>On the load balancer, which terminates TLS<a class="src" href="#s8">[8]</a></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="stepper">Step through a request</h3>
+      <p>Choose a layer and a request in Figure 9.5, then step through. Watch which fields the balancer rewrites, and whether the request path changes where the request goes.</p>
+      <figure>
+        <div class="sim" id="lsim">
+          <div class="sim-ctrls">
+            <div><span class="lbl">Layer</span><span class="seg" role="group" aria-label="Layer" id="lLayerSeg"><button type="button" data-v="4" aria-pressed="true">Layer 4</button><button type="button" data-v="7">Layer 7</button></span></div>
+            <div><span class="lbl">Request</span><span class="seg" role="group" aria-label="Request" id="lReqSeg"><button type="button" data-v="video" aria-pressed="true">GET /videos/42</button><button type="button" data-v="billing">POST /billing/pay</button></span></div>
+          </div>
+          <div class="figwrap">
+            <svg viewBox="0 0 680 262" role="img" aria-labelledby="f5t" id="lsvg">
+              <title id="f5t">Client, load balancer and three server groups; the current step is described below.</title>
+              <g id="lpaths"></g>
+              <rect x="20" y="104" width="120" height="60" rx="8" class="s-box"/>
+              <text x="80" y="130" text-anchor="middle" class="s-tb">Client</text>
+              <text x="80" y="148" text-anchor="middle" class="s-tm">198.51.100.7</text>
+              <g id="lLb"><rect x="255" y="88" width="150" height="92" rx="10" class="s-acc lbbox"/>
+                <text x="330" y="114" text-anchor="middle" class="s-tb">Load balancer</text>
+                <text x="330" y="132" text-anchor="middle" class="s-tm">203.0.113.10</text>
+                <text x="330" y="156" text-anchor="middle" class="s-ts" id="lReads">reads: IPs + ports</text></g>
+              <g id="lpools"></g>
+            </svg>
+          </div>
+          <div class="legend" aria-hidden="true">
+            <span><i class="sq" style="width:14px;height:3px;background:var(--accent)"></i>request</span>
+            <span><i class="sq" style="width:14px;height:3px;background:var(--warm)"></i>response</span>
+            <span><i class="sq" style="background:var(--warm-soft);border:1px solid var(--warm)"></i>chosen server</span>
+          </div>
+          <p class="step-title" id="lTitle"></p>
+          <dl class="inspect" id="lFields"></dl>
+          <p class="step-text" id="lText" aria-live="polite"></p>
+          <div class="ctrl"><button type="button" class="btn" id="lPrev">← Back</button><button type="button" class="btn primary" id="lNext">Next →</button><button type="button" class="btn" id="lReset">Restart</button><span class="count" id="lCount"></span></div>
+        </div>
+        <figcaption><b>Figure 9.5</b> Interactive: one request through a layer 4 and a layer 7 load balancer. Steps from the primer<a class="src" href="#s1">[1]</a> and the NGINX glossary;<a class="src" href="#s6">[6]</a><a class="src" href="#s7">[7]</a> header names from AWS.<a class="src" href="#s8">[8]</a> Addresses are documentation examples; the layer 4 choice of server 2 stands for any address-based choice.</figcaption>
+      </figure>
+
+      <h3 id="elb">Listeners in AWS</h3>
+      <p>The primer links AWS’s Classic Load Balancer docs, where the layers show up as listener types. A <b>listener</b> is a process that checks for connection requests. Each has a protocol and port for the <b>front end</b> (client to load balancer) and for the <b>back end</b> (load balancer to instance).<a class="src" href="#s8">[8]</a></p>
+      <div class="tablewrap">
+        <table>
+          <caption class="tcap"><b>Table 9.4</b> Classic Load Balancer listeners<a class="src" href="#s8">[8]</a></caption>
+          <thead><tr><th></th><th>TCP / SSL (layer 4)</th><th>HTTP / HTTPS (layer 7)</th></tr></thead>
+          <tbody>
+            <tr><td><b>Back-end protocol</b></td><td>TCP or SSL</td><td>HTTP or HTTPS</td></tr>
+            <tr><td><b>Request headers</b></td><td>Forwarded unchanged</td><td>Parsed before forwarding</td></tr>
+            <tr><td><b>Client’s IP, for servers</b></td><td>Optional <b>proxy protocol</b> header</td><td><code>X-Forwarded-For</code> header</td></tr>
+            <tr><td><b>Sticky sessions</b></td><td>Not available</td><td>Available</td></tr>
+            <tr><td><b>Back-end connections</b></td><td>Opens a TCP connection to the instance</td><td>Keeps connections open to each healthy instance</td></tr>
+            <tr><td><b>TLS</b></td><td>SSL front end: terminated, cert on the balancer. TCP at both ends: cert on the instances</td><td>HTTPS front end: terminated, cert on the balancer</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Without these headers, server logs would show only the load balancer’s address. AWS also advises a TCP listener when a request uses HTTP features the balancer cannot handle.<a class="src" href="#s8">[8]</a> Note that AWS now calls Classic Load Balancers the previous generation and recommends migrating to its current types (Application, Network and Gateway Load Balancers).<a class="src" href="#s13">[13]</a></p>
+    </section>
+
+    <!-- ===================== 9.5 ===================== -->
+    <section id="horizontal">
+      <h2><span class="num">9.5</span>Horizontal scaling</h2>
+      <p>Load balancers also help with <b>horizontal scaling</b>, improving performance and availability. Scaling out with <b>commodity machines</b> is more cost efficient and gives higher availability than scaling up a single server on more expensive hardware, which is <b>vertical scaling</b>. It is also easier to hire people who work on commodity hardware than on specialised enterprise systems.<a class="src" href="#s1">[1]</a></p>
+      <div class="tablewrap">
+        <table>
+          <caption class="tcap"><b>Table 9.5</b> Vertical and horizontal scaling<a class="src" href="#s1">[1]</a></caption>
+          <thead><tr><th></th><th>Vertical (scale up)</th><th>Horizontal (scale out)</th></tr></thead>
+          <tbody>
+            <tr><td><b>How</b></td><td>One server on more expensive hardware</td><td>More commodity machines behind a load balancer</td></tr>
+            <tr><td><b>Cost efficiency</b></td><td>Lower</td><td>Higher</td></tr>
+            <tr><td><b>Availability</b></td><td>Lower</td><td>Higher</td></tr>
+            <tr><td><b>Hiring</b></td><td>Specialised enterprise systems</td><td>Easier: commodity hardware</td></tr>
+            <tr><td><b>Complexity</b></td><td>Lower</td><td>Higher: cloning servers, stateless design (below)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="clones">Clones</h3>
+      <p>The primer links part 1 of <i>Scalability for Dummies</i> (also covered in Unit 1). Its rules for scaling out:<a class="src" href="#s4">[4]</a></p>
+      <ul>
+        <li>A user may land on a different server with every request, so every server must run the <b>same code</b> and store <b>no user-related data</b>, such as sessions or profile pictures, locally. The author calls this the first golden rule for scalability.</li>
+        <li>Keep sessions in a <b>centralized data store</b> all servers can reach: an external database or an external persistent cache. The author prefers <b>Redis</b> for performance.</li>
+        <li>Deploy code changes to <b>every</b> server, so none keeps serving old code. The article names Capistrano as a tool for this.</li>
+        <li>Once servers hold no state, make an <b>image</b> of one (on AWS, an <b>AMI</b>) and launch new servers from this “super-clone”.</li>
+      </ul>
+      <figure>
+        <div class="figwrap">
+          <svg viewBox="0 0 680 300" role="img" aria-labelledby="f6t">
+            <title id="f6t">Left: vertical scaling replaces a small server with a bigger, more expensive one. Right: horizontal scaling puts a load balancer in front of identical, stateless clones built from one machine image; the clones keep sessions in a shared session store and data in a database, which both receive more connections as clones are added.</title>
+            <defs><marker id="m96" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="s-arrow"/></marker></defs>
+            <text x="110" y="22" text-anchor="middle" class="s-tb">Vertical: scale up</text>
+            <rect x="22" y="150" width="56" height="60" rx="6" class="s-box"/><text x="50" y="185" text-anchor="middle" class="s-ts">server</text>
+            <path d="M84,180 H118" class="s-line" marker-end="url(#m96)"/>
+            <rect x="124" y="60" width="86" height="150" rx="8" class="s-warm"/>
+            <text x="167" y="120" text-anchor="middle" class="s-tb">bigger</text><text x="167" y="138" text-anchor="middle" class="s-tb">server</text>
+            <text x="167" y="160" text-anchor="middle" class="s-ts">more CPU,</text><text x="167" y="174" text-anchor="middle" class="s-ts">RAM, disk</text>
+            <text x="116" y="240" text-anchor="middle" class="s-ts">one machine,</text><text x="116" y="254" text-anchor="middle" class="s-ts">expensive hardware</text>
+            <path d="M232,20 V285" class="s-dash"/>
+            <text x="455" y="22" text-anchor="middle" class="s-tb">Horizontal: scale out</text>
+            <rect x="250" y="126" width="84" height="56" rx="8" class="s-acc"/><text x="292" y="151" text-anchor="middle" class="s-tb">Load</text><text x="292" y="167" text-anchor="middle" class="s-tb">balancer</text>
+            <g>
+              <rect x="380" y="44" width="112" height="50" rx="8" class="s-box"/><text x="436" y="66" text-anchor="middle" class="s-tb">App server</text><text x="436" y="83" text-anchor="middle" class="s-ts">the original</text>
+              <rect x="380" y="129" width="112" height="50" rx="8" class="s-warm"/><text x="436" y="151" text-anchor="middle" class="s-tb">+ Added clone</text><text x="436" y="168" text-anchor="middle" class="s-ts">same code, no state</text>
+              <rect x="380" y="214" width="112" height="50" rx="8" class="s-warm"/><text x="436" y="236" text-anchor="middle" class="s-tb">+ Added clone</text><text x="436" y="253" text-anchor="middle" class="s-ts">same code, no state</text>
+            </g>
+            <path d="M334,146 L378,69" class="s-line" marker-end="url(#m96)"/><path d="M334,154 H378" class="s-line" marker-end="url(#m96)"/><path d="M334,162 L378,239" class="s-line" marker-end="url(#m96)"/>
+            <text x="436" y="285" text-anchor="middle" class="s-tm">clones built from one image (AMI)</text>
+            <rect x="548" y="60" width="122" height="56" rx="8" class="s-acc"/><text x="609" y="84" text-anchor="middle" class="s-tb">Session store</text><text x="609" y="102" text-anchor="middle" class="s-ts">Redis / Memcached</text>
+            <rect x="548" y="176" width="122" height="56" rx="8" class="s-acc"/><text x="609" y="200" text-anchor="middle" class="s-tb">Database</text><text x="609" y="218" text-anchor="middle" class="s-ts">SQL / NoSQL</text>
+            <path d="M492,69 L546,84 M492,154 L546,94 M492,239 L546,104 M492,74 L546,194 M492,159 L546,204 M492,244 L546,214" class="s-line" style="stroke-width:1.1"/>
+            <text x="609" y="258" text-anchor="middle" class="s-ts">more connections</text><text x="609" y="272" text-anchor="middle" class="s-ts">as clones are added</text>
+          </svg>
+        </div>
+        <figcaption><b>Figure 9.6</b> Scaling up vs scaling out. Orange marks what changes: scaling up swaps in a bigger server, while scaling out adds more copies of the same one. Clones are interchangeable because sessions live in a shared store, not on the servers. Based on the primer<a class="src" href="#s1">[1]</a> and <i>Scalability for Dummies</i>, part 1.<a class="src" href="#s4">[4]</a></figcaption>
+      </figure>
+
+      <h3 id="sessions">Where sessions go</h3>
+      <p>The primer’s rule is that servers should be <b>stateless</b>, with sessions in a centralized data store such as a database (SQL, NoSQL) or a persistent cache (Redis, Memcached).<a class="src" href="#s1">[1]</a> Table 9.6 compares this with the alternatives Wikipedia describes.</p>
+      <div class="tablewrap">
+        <table>
+          <caption class="tcap"><b>Table 9.6</b> Where to keep session state</caption>
+          <thead><tr><th>Option</th><th>Upside</th><th>Downside</th></tr></thead>
+          <tbody>
+            <tr><td><b>On one server, with sticky sessions</b></td><td>Servers can keep sessions in memory</td><td>No automatic fail-over: the session dies with the server. Client IPs used for stickiness can change (DHCP, NAT, proxies)<a class="src" href="#s5">[5]</a></td></tr>
+            <tr><td><b>Central database</b></td><td>Any server can serve any client</td><td>Extra load on the database; replicating it helps<a class="src" href="#s5">[5]</a></td></tr>
+            <tr><td><b>Central persistent cache</b></td><td>Any server can serve any client; fast (Redis is the article’s pick)<a class="src" href="#s4">[4]</a></td><td>One more shared component the servers depend on</td></tr>
+            <tr><td><b>On the client (e.g. an encrypted cookie)</b></td><td>Any server can serve any request; generally preferred<a class="src" href="#s5">[5]</a></td><td>Unsuitable for large session data<a class="src" href="#s5">[5]</a></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="hs-cons">Disadvantages</h3>
+      <div class="prosCons">
+        <div class="con"><h4>Disadvantages: horizontal scaling</h4><ul>
+          <li>Scaling horizontally introduces <b>complexity</b> and involves <b>cloning</b> servers.<a class="src" href="#s1">[1]</a>
+            <ul>
+              <li>Servers should be stateless: no user-related data such as sessions or profile pictures.</li>
+              <li>Sessions go in a centralized data store: a database or a persistent cache.</li>
+            </ul></li>
+          <li><b>Downstream</b> servers such as caches and databases must handle more simultaneous connections as upstream servers scale out.<a class="src" href="#s1">[1]</a></li>
+        </ul></div>
+      </div>
+    </section>
+
+    <!-- ===================== 9.6 ===================== -->
+    <section id="inside">
+      <h2><span class="num">9.6</span>Inside software load balancers</h2>
+      <p>The primer’s further reading includes architecture notes for the two best-known software load balancers. They show how one machine can sit in front of many servers without becoming the bottleneck.</p>
+
+      <h3 id="nginx">NGINX: event-driven workers</h3>
+      <p>NGINX runs a small set of processes:<a class="src" href="#s2">[2]</a></p>
+      <ul>
+        <li>The <b>master</b> process does the privileged work, such as reading the configuration and binding to ports, then starts the others.</li>
+        <li><b>Worker</b> processes do all the request work: network connections, disk, and talking to upstream servers. The recommended setup is one worker per CPU core.</li>
+        <li>A <b>cache loader</b> loads the disk cache into memory at startup and exits; a <b>cache manager</b> prunes the cache to its size limits.</li>
+      </ul>
+      <p>Many servers dedicate a process or thread to each connection, which then <b>blocks</b> while it waits. Each connection itself costs only a file descriptor and a little memory, but the thread or process tied to it is a heavyweight object. An NGINX worker is single-threaded and <b>non-blocking</b>: it waits for events on its sockets and handles whichever connection has work ready. With tuning, one worker can handle hundreds of thousands of concurrent connections.<a class="src" href="#s2">[2]</a> The article compares it with a chess grandmaster playing hundreds of opponents at once, moving at whichever board is ready.<a class="src" href="#s2">[2]</a></p>
+      <figure>
+        <div class="figwrap">
+          <svg viewBox="0 0 680 270" role="img" aria-labelledby="f7t">
+            <title id="f7t">Left: a blocking server uses one thread or process per connection. Right: NGINX has a master process, a cache loader and a cache manager, and one worker per CPU core; each worker handles many connections, and the workers share memory.</title>
+            <text x="120" y="20" text-anchor="middle" class="s-tb">Blocking: one per connection</text>
+            <g><rect x="24" y="44" width="110" height="34" rx="6" class="s-box"/><text x="79" y="65" text-anchor="middle" class="s-t">thread 1</text><path d="M134,61 H192" class="s-line"/><circle cx="198" cy="61" r="4.5" class="s-dot2"/><rect x="24" y="92" width="110" height="34" rx="6" class="s-box"/><text x="79" y="113" text-anchor="middle" class="s-t">thread 2</text><path d="M134,109 H192" class="s-line"/><circle cx="198" cy="109" r="4.5" class="s-dot2"/><rect x="24" y="140" width="110" height="34" rx="6" class="s-box"/><text x="79" y="161" text-anchor="middle" class="s-t">thread 3</text><path d="M134,157 H192" class="s-line"/><circle cx="198" cy="157" r="4.5" class="s-dot2"/><rect x="24" y="188" width="110" height="34" rx="6" class="s-box"/><text x="79" y="209" text-anchor="middle" class="s-t">thread 4</text><path d="M134,205 H192" class="s-line"/><circle cx="198" cy="205" r="4.5" class="s-dot2"/><text x="120" y="242" text-anchor="middle" class="s-ts">each connection ties up a heavyweight</text><text x="120" y="256" text-anchor="middle" class="s-ts">thread or process, which blocks on I/O</text></g>
+            <path d="M246,10 V262" class="s-dash"/>
+            <text x="470" y="20" text-anchor="middle" class="s-tb">NGINX: event-driven</text>
+            <rect x="268" y="34" width="104" height="40" rx="7" class="s-box"/><text x="320" y="52" text-anchor="middle" class="s-t">Cache loader</text><text x="320" y="67" text-anchor="middle" class="s-ts">startup, then exits</text>
+            <rect x="398" y="34" width="144" height="40" rx="7" class="s-warm"/><text x="470" y="52" text-anchor="middle" class="s-tb">Master</text><text x="470" y="67" text-anchor="middle" class="s-ts">config, ports</text>
+            <rect x="568" y="34" width="104" height="40" rx="7" class="s-box"/><text x="620" y="52" text-anchor="middle" class="s-t">Cache manager</text><text x="620" y="67" text-anchor="middle" class="s-ts">prunes cache</text>
+            <rect x="262" y="96" width="414" height="86" rx="10" class="s-dash"/>
+            <text x="272" y="112" class="s-ts">shared memory</text>
+            <g><path d="M470,74 L320,124" class="s-line" style="stroke-width:1.1"/><path d="M470,74 L420,124" class="s-line" style="stroke-width:1.1"/><path d="M470,74 L520,124" class="s-line" style="stroke-width:1.1"/><path d="M470,74 L620,124" class="s-line" style="stroke-width:1.1"/><rect x="276" y="124" width="88" height="46" rx="7" class="s-acc"/><text x="320" y="144" text-anchor="middle" class="s-tb">Worker 1</text><text x="320" y="161" text-anchor="middle" class="s-ts">CPU core 1</text><path d="M320,170 L280,226" class="s-line" style="stroke-width:.9"/><circle cx="280" cy="230" r="3.5" class="s-dot"/><path d="M320,170 L296,226" class="s-line" style="stroke-width:.9"/><circle cx="296" cy="230" r="3.5" class="s-dot"/><path d="M320,170 L312,226" class="s-line" style="stroke-width:.9"/><circle cx="312" cy="230" r="3.5" class="s-dot"/><path d="M320,170 L328,226" class="s-line" style="stroke-width:.9"/><circle cx="328" cy="230" r="3.5" class="s-dot"/><path d="M320,170 L344,226" class="s-line" style="stroke-width:.9"/><circle cx="344" cy="230" r="3.5" class="s-dot"/><path d="M320,170 L360,226" class="s-line" style="stroke-width:.9"/><circle cx="360" cy="230" r="3.5" class="s-dot"/><rect x="376" y="124" width="88" height="46" rx="7" class="s-acc"/><text x="420" y="144" text-anchor="middle" class="s-tb">Worker 2</text><text x="420" y="161" text-anchor="middle" class="s-ts">CPU core 2</text><path d="M420,170 L380,226" class="s-line" style="stroke-width:.9"/><circle cx="380" cy="230" r="3.5" class="s-dot"/><path d="M420,170 L396,226" class="s-line" style="stroke-width:.9"/><circle cx="396" cy="230" r="3.5" class="s-dot"/><path d="M420,170 L412,226" class="s-line" style="stroke-width:.9"/><circle cx="412" cy="230" r="3.5" class="s-dot"/><path d="M420,170 L428,226" class="s-line" style="stroke-width:.9"/><circle cx="428" cy="230" r="3.5" class="s-dot"/><path d="M420,170 L444,226" class="s-line" style="stroke-width:.9"/><circle cx="444" cy="230" r="3.5" class="s-dot"/><path d="M420,170 L460,226" class="s-line" style="stroke-width:.9"/><circle cx="460" cy="230" r="3.5" class="s-dot"/><rect x="476" y="124" width="88" height="46" rx="7" class="s-acc"/><text x="520" y="144" text-anchor="middle" class="s-tb">Worker 3</text><text x="520" y="161" text-anchor="middle" class="s-ts">CPU core 3</text><path d="M520,170 L480,226" class="s-line" style="stroke-width:.9"/><circle cx="480" cy="230" r="3.5" class="s-dot"/><path d="M520,170 L496,226" class="s-line" style="stroke-width:.9"/><circle cx="496" cy="230" r="3.5" class="s-dot"/><path d="M520,170 L512,226" class="s-line" style="stroke-width:.9"/><circle cx="512" cy="230" r="3.5" class="s-dot"/><path d="M520,170 L528,226" class="s-line" style="stroke-width:.9"/><circle cx="528" cy="230" r="3.5" class="s-dot"/><path d="M520,170 L544,226" class="s-line" style="stroke-width:.9"/><circle cx="544" cy="230" r="3.5" class="s-dot"/><path d="M520,170 L560,226" class="s-line" style="stroke-width:.9"/><circle cx="560" cy="230" r="3.5" class="s-dot"/><rect x="576" y="124" width="88" height="46" rx="7" class="s-acc"/><text x="620" y="144" text-anchor="middle" class="s-tb">Worker 4</text><text x="620" y="161" text-anchor="middle" class="s-ts">CPU core 4</text><path d="M620,170 L580,226" class="s-line" style="stroke-width:.9"/><circle cx="580" cy="230" r="3.5" class="s-dot"/><path d="M620,170 L596,226" class="s-line" style="stroke-width:.9"/><circle cx="596" cy="230" r="3.5" class="s-dot"/><path d="M620,170 L612,226" class="s-line" style="stroke-width:.9"/><circle cx="612" cy="230" r="3.5" class="s-dot"/><path d="M620,170 L628,226" class="s-line" style="stroke-width:.9"/><circle cx="628" cy="230" r="3.5" class="s-dot"/><path d="M620,170 L644,226" class="s-line" style="stroke-width:.9"/><circle cx="644" cy="230" r="3.5" class="s-dot"/><path d="M620,170 L660,226" class="s-line" style="stroke-width:.9"/><circle cx="660" cy="230" r="3.5" class="s-dot"/></g>
+            <path d="M372,54 H398 M542,54 H568" class="s-line"/>
+            <text x="470" y="258" text-anchor="middle" class="s-ts">each worker: one thread, many connections, handled as events</text>
+          </svg>
+        </div>
+        <figcaption><b>Figure 9.7</b> NGINX’s process model compared with a process- or thread-per-connection server, shown for a four-core machine. Workers share memory for the cache, session persistence and rate limits. Based on <i>Inside NGINX</i>.<a class="src" href="#s2">[2]</a></figcaption>
+      </figure>
+      <p>The same design lets NGINX change without downtime. On <code>nginx -s reload</code>, the master loads the new configuration and starts new workers; the old workers stop taking new connections, finish their current requests and exit. A binary upgrade works the same way, with old and new masters sharing the listening sockets.<a class="src" href="#s2">[2]</a> For a load balancer, which every request passes through, this matters.</p>
+
+      <h3 id="queue">HAProxy: queue, don’t overload</h3>
+      <p>The HAProxy guide shows how a load balancer prevents overloading. Each server gets a limit on concurrent connections (<code>maxconn</code>), and HAProxy <b>queues</b> requests above the limit instead of passing them on.<a class="src" href="#s3">[3]</a> The guide lists the benefits:</p>
+      <ul>
+        <li>clients are served whatever the volume; only latency goes up;</li>
+        <li>servers can run at full speed without stalling, and response times drop when servers are kept below their congestion point;</li>
+        <li>there is no domino effect when a server fails or starts up;</li>
+        <li>memory-limited servers perform better.</li>
+      </ul>
+      <div class="callout tip"><span class="label">Worked example</span><p>Three servers with <code>maxconn 4</code> each, each handling 4 requests in about 10 ms: with 3000 connections, the guide calculates a maximum delay of 3000 ÷ 3 ÷ 4 × 10 ms = <b>2.5 s</b>.<a class="src" href="#s3">[3]</a> Clients wait longer, but no server is pushed past what it can handle.</p></div>
+      <p>Two related settings: <code>option abortonclose</code> drops queued requests whose client has already gone, and <code>minconn</code> with <code>maxconn</code> lets a server run with lower concurrency under light load, rising towards the maximum as the queue grows.<a class="src" href="#s3">[3]</a></p>
+    </section>
+
+    <!-- ===================== 9.7 ===================== -->
+    <section id="cons">
+      <h2><span class="num">9.7</span>Disadvantages</h2>
+      <div class="prosCons">
+        <div class="con"><h4>Disadvantages: load balancer</h4><ul>
+          <li>It can become a <b>performance bottleneck</b> if it lacks resources or is not configured properly.<a class="src" href="#s1">[1]</a></li>
+          <li>Adding a load balancer to help remove a single point of failure <b>increases complexity</b>.<a class="src" href="#s1">[1]</a></li>
+          <li>A <b>single</b> load balancer is a single point of failure; configuring multiple load balancers adds still more complexity.<a class="src" href="#s1">[1]</a></li>
+        </ul></div>
+      </div>
+      <p>Each point connects to earlier sections: SSL termination is one way to overload the balancer (9.0), the pair of balancers in 9.1 and 9.2 fixes the single point of failure at the cost of complexity, and NGINX’s and HAProxy’s designs (9.6) are aimed at the bottleneck. Wikipedia adds that fail-over through load balancing needs spare capacity, at least one server more than the load requires (<b>N+1</b>).<a class="src" href="#s5">[5]</a></p>
+
+      <h3 id="beyond">Beyond the primer</h3>
+      <p>Wikipedia lists features many load balancers offer besides choosing a server:<a class="src" href="#s5">[5]</a></p>
+      <div class="terms">
+        <div><b>DDoS and SYN-flood protection</b><span>SYN cookies and delayed binding: servers see a client only after its TCP handshake completes.</span></div>
+        <div><b>HTTP compression</b><span>Shrinks responses with gzip, at the cost of balancer CPU.</span></div>
+        <div><b>TCP buffering</b><span>Buffers responses and feeds them to slow clients, freeing servers sooner.</span></div>
+        <div><b>TCP offload</b><span>Combines many clients’ HTTP requests into fewer persistent connections to the servers.</span></div>
+        <div><b>Direct server return</b><span>Replies take a different path back to the client, bypassing the balancer.</span></div>
+        <div><b>HTTP caching</b><span>Serves static content itself, so some requests never reach a server.</span></div>
+        <div><b>Priority activation</b><span>Brings standby servers online when too few servers are up or load is high.</span></div>
+        <div><b>Firewall</b><span>Blocks direct connections to the backend servers.</span></div>
+      </div>
+      <div class="callout tip"><span class="label">In an interview</span><p>Put a load balancer in front of stateless application servers and say where sessions live: a shared cache or database. Then remove the balancer as a single point of failure with an active-passive pair sharing a virtual IP, or active-active behind DNS. Choose layer 7 when you need to route by URL, header or cookie, and mention health checks and SSL termination. Reverse proxies, which overlap heavily with layer 7 balancers, come next in Unit 10.</p></div>
+    </section>
+
+    <!-- ===================== 9.8 ===================== -->
+    <section id="resources">
+      <h2><span class="num">9.8</span>Resources</h2>
+      <div class="res">
+        <a href="https://github.com/donnemartin/system-design-primer#load-balancer"><b>Primer: Load balancer</b><span>The source section for this unit</span></a>
+        <a href="http://www.haproxy.org/download/1.2/doc/architecture.txt"><b>HAProxy architecture guide</b><span>Willy Tarreau; seven real deployments with configs</span></a>
+        <a href="https://blog.nginx.org/blog/inside-nginx-how-we-designed-for-performance-scale"><b>Inside NGINX</b><span>Owen Garrett, 2015; process model and event loop</span></a>
+        <a href="https://en.wikipedia.org/wiki/Load_balancing_(computing)"><b>Load balancing (computing)</b><span>Wikipedia; algorithms, persistence, features</span></a>
+        <a href="https://www.f5.com/glossary/layer-4-load-balancing"><b>Layer 4 load balancing</b><span>NGINX/F5 glossary; NAT step by step</span></a>
+        <a href="https://www.f5.com/glossary/layer-7-load-balancing"><b>Layer 7 load balancing</b><span>NGINX/F5 glossary; content-based routing</span></a>
+        <a href="https://docs.aws.amazon.com/elasticloadbalancing/latest/classic/elb-listener-config.html"><b>Classic Load Balancer listeners</b><span>AWS docs; layer 4 vs layer 7 in practice</span></a>
+        <a href="https://www.g33kinfo.com/info/round-robin-vs-weighted-round-robin-lb"><b>Round robin vs weighted round robin</b><span>The worked example behind Table 9.2</span></a>
+        <a href="https://web.archive.org/web/20220530193911/https://www.lecloud.net/post/7295452622/scalability-for-dummies-part-1-clones"><b>Scalability for Dummies, part 1</b><span>Clones and stateless servers</span></a>
+        <a href="unit6.html"><b>Unit 6 · Availability patterns</b><span>Fail-over and replication in depth</span></a>
+        <a href="unit7.html"><b>Unit 7 · Domain name system</b><span>DNS, TTLs and weighted round robin in DNS</span></a>
+        <a href="https://github.com/donnemartin/system-design-primer#reverse-proxy-web-server"><b>Next: Reverse proxy (web server)</b><span>And how it differs from a load balancer (Unit 10)</span></a>
+      </div>
+    </section>
+
+    <!-- ===================== 9.9 ===================== -->
+    <section id="sources">
+      <h2><span class="num">9.9</span>Sources</h2>
+      <ol class="sources">
+        <li id="s1">D. Martin et al., <a href="https://github.com/donnemartin/system-design-primer#load-balancer">The System Design Primer: Load balancer</a>, GitHub. Figure 9.1 from its <code>images/</code> folder, credited there to Ricky Ho [12].</li>
+        <li id="s2">O. Garrett, <a href="https://blog.nginx.org/blog/inside-nginx-how-we-designed-for-performance-scale">Inside NGINX: How We Designed for Performance &amp; Scale</a>, NGINX blog, 10 June 2015. The primer’s <a href="https://www.nginx.com/blog/inside-nginx-how-we-designed-for-performance-scale/">nginx.com link</a> now redirects to an F5 product page; read at its new address.</li>
+        <li id="s3">W. Tarreau, <a href="http://www.haproxy.org/download/1.2/doc/architecture.txt">HAProxy Architecture Guide</a>, version 1.2.18, 2008.</li>
+        <li id="s4"><a href="https://web.archive.org/web/20220530193911/https://www.lecloud.net/post/7295452622/scalability-for-dummies-part-1-clones">Scalability for Dummies, Part 1: Clones</a>, Le Cloud Blog (the primer links the Internet Archive copy; read from <a href="https://www.lecloud.net/post/7295452622/scalability-for-dummies-part-1-clones">lecloud.net</a>).</li>
+        <li id="s5">Wikipedia, <a href="https://en.wikipedia.org/wiki/Load_balancing_(computing)">Load balancing (computing)</a>.</li>
+        <li id="s6">NGINX (F5), <a href="https://www.f5.com/glossary/layer-4-load-balancing">What Is Layer 4 Load Balancing?</a> The primer’s <a href="https://www.nginx.com/resources/glossary/layer-4-load-balancing/">nginx.com link</a> now redirects; read at the F5 glossary, which carries the same NGINX entry.</li>
+        <li id="s7">NGINX (F5), <a href="https://www.f5.com/glossary/layer-7-load-balancing">What Is Layer 7 Load Balancing?</a> Moved from the primer’s <a href="https://www.nginx.com/resources/glossary/layer-7-load-balancing/">nginx.com link</a>, as above.</li>
+        <li id="s8">Amazon Web Services, <a href="https://docs.aws.amazon.com/elasticloadbalancing/latest/classic/elb-listener-config.html">Listeners for your Classic Load Balancer</a> (the primer’s “ELB listener config”).</li>
+        <li id="s9">g33kadmin, <a href="https://www.g33kinfo.com/info/round-robin-vs-weighted-round-robin-lb">Round Robin vs. Weighted Round Robin LB</a>, Linux Shtuff, 25 February 2010 (linked from the primer’s routing list).</li>
+        <li id="s10">Wikipedia, <a href="https://en.wikipedia.org/wiki/X.509">X.509</a> (linked from the primer’s SSL termination point).</li>
+        <li id="s11">D. Martin et al., <a href="https://github.com/donnemartin/system-design-primer#fail-over">The System Design Primer: Fail-over</a>, the target of the Load balancer section’s <a href="https://github.com/donnemartin/system-design-primer#active-passive">active-passive</a> and <a href="https://github.com/donnemartin/system-design-primer#active-active">active-active</a> links.</li>
+        <li id="s12">R. Ho, <a href="http://horicky.blogspot.com/2010/10/scalable-system-design-patterns.html">Scalable System Design Patterns</a>, Pragmatic Programming Techniques, 15 October 2010 (source credited under the primer’s figure).</li>
+        <li id="s13">Amazon Web Services, <a href="https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/what-is-load-balancing.html">What is Elastic Load Balancing?</a> (outside source, for the current status of Classic Load Balancers).</li>
+      </ol>
+    </section>
+  </main>
+</div>
+
+<aside class="note" id="notePanel" role="dialog" aria-labelledby="noteTitle" hidden>
+  <div class="note-head"><strong id="noteTitle">Key terms · Unit 9</strong><button id="noteClose" aria-label="Close key terms">×</button></div>
+  <h5>Basics</h5>
+  <dl>
+    <dt>Load balancer</dt><dd>Spreads client requests over servers; relays the replies.</dd>
+    <dt>Dispatcher · worker</dt><dd>Ho’s names for the balancer · the servers behind it.</dd>
+    <dt>SPOF</dt><dd>Single point of failure: one part whose failure stops everything.</dd>
+    <dt>Health check</dt><dd>Regular poll; failed servers leave the pool until they recover.</dd>
+    <dt>HAProxy · NGINX</dt><dd>Widely used software load balancers.</dd>
+  </dl>
+  <h5>Benefits</h5>
+  <dl>
+    <dt>SSL termination</dt><dd>Balancer decrypts/encrypts so servers don’t have to.</dd>
+    <dt>X.509 certificate</dt><dd>CA-signed binding of a public key to a hostname.</dd>
+    <dt>Session persistence</dt><dd>“Sticky sessions”: one client kept on one server.</dd>
+    <dt>Cookie insertion · prefix</dt><dd>Balancer adds a server cookie · tags the app’s own cookie.</dd>
+  </dl>
+  <h5>Routing</h5>
+  <dl>
+    <dt>Round robin</dt><dd>Next server in turn; ignores capacity.</dd>
+    <dt>Weighted round robin</dt><dd>Turns in proportion to integer weights.</dd>
+    <dt>Least loaded</dt><dd>Fewest active connections or lowest load.</dd>
+  </dl>
+  <h5>Redundancy</h5>
+  <dl>
+    <dt>Active-passive</dt><dd>Standby takes over the active’s IP on lost heartbeat; master-slave.</dd>
+    <dt>Heartbeat</dt><dd>Periodic “I’m alive” signal between the pair.</dd>
+    <dt>Hot · cold standby</dt><dd>Already running · must boot first (longer downtime).</dd>
+    <dt>VIP · VRRP</dt><dd>Shared virtual address · protocol that moves it.</dd>
+    <dt>Active-active</dt><dd>Both serve traffic; DNS or app knows both; master-master.</dd>
+  </dl>
+  <h5>Layers</h5>
+  <dl>
+    <dt>Layer 4</dt><dd>Routes by IPs and ports; never reads the payload.</dd>
+    <dt>NAT</dt><dd>Rewriting packet addresses on the way through.</dd>
+    <dt>Layer 7</dt><dd>Terminates, reads headers/URL/cookies, then routes.</dd>
+    <dt>Reverse proxy</dt><dd>Common name for a layer 7 balancer (Unit 10).</dd>
+    <dt>Listener</dt><dd>AWS: front-end + back-end protocol and port.</dd>
+    <dt>X-Forwarded-For · proxy protocol</dt><dd>Pass the client’s IP at layer 7 · layer 4.</dd>
+  </dl>
+  <h5>Scaling</h5>
+  <dl>
+    <dt>Horizontal · vertical</dt><dd>More commodity machines · one bigger machine.</dd>
+    <dt>Stateless server</dt><dd>Holds no sessions or user files; clones are interchangeable.</dd>
+    <dt>Session store</dt><dd>Shared database or cache (Redis, Memcached) for sessions.</dd>
+    <dt>Machine image (AMI)</dt><dd>Template new clones boot from.</dd>
+  </dl>
+  <h5>Internals</h5>
+  <dl>
+    <dt>Event-driven worker</dt><dd>One non-blocking thread serving many connections.</dd>
+    <dt>maxconn queue</dt><dd>Per-server limit; extra requests wait at the balancer.</dd>
+  </dl>
+</aside>
+
+<button class="fab" id="notesBtn" aria-label="Show key terms" aria-expanded="false" aria-controls="notePanel" title="Key terms">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M5 3h10l4 4v14H5z"/><path d="M15 3v4h4"/><path d="M8 11h8M8 15h8M8 19h5"/></svg>
+</button>
+<button class="fab hide" id="toTop" aria-label="Return to top" title="Return to top">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+</button>
+
+
+<script>
+(function(){
+  const links = Array.from(document.querySelectorAll('.toc a'));
+  const targets = links.map(a => document.getElementById(a.getAttribute('href').slice(1))).filter(Boolean);
+  const toc = document.getElementById('toc');
+  const toggle = document.getElementById('tocToggle');
+  const current = document.getElementById('tocCurrent');
+  const toTop = document.getElementById('toTop');
+  const mq = window.matchMedia('(max-width: 960px)');
+
+  function syncToc(){ if(!mq.matches){ toc.hidden = false; } else if(toggle.getAttribute('aria-expanded') !== 'true'){ toc.hidden = true; } }
+  syncToc(); mq.addEventListener ? mq.addEventListener('change', syncToc) : mq.addListener(syncToc);
+
+  toggle.addEventListener('click', () => {
+    const open = toggle.getAttribute('aria-expanded') === 'true';
+    toggle.setAttribute('aria-expanded', String(!open)); toc.hidden = open;
+  });
+  links.forEach(a => a.addEventListener('click', () => {
+    if(mq.matches){ toggle.setAttribute('aria-expanded','false'); toc.hidden = true; }
+  }));
+
+  function spy(){
+    const offset = mq.matches ? 90 : 40;
+    let idx = 0;
+    targets.forEach((t, i) => { if(t.getBoundingClientRect().top - offset <= 0) idx = i; });
+    if(window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) idx = targets.length - 1;
+    links.forEach(a => a.classList.remove('active','parent-active'));
+    const a = links[idx]; if(!a) return;
+    a.classList.add('active');
+    const parentLi = a.closest('ol').closest('li');
+    if(parentLi){ parentLi.querySelector(':scope > a').classList.add('parent-active'); }
+    current.textContent = a.textContent.replace(/^\d\.\d/, m => m + ' ');
+    if(!mq.matches){
+      const r = a.getBoundingClientRect(), rail = document.querySelector('.rail').getBoundingClientRect();
+      if(r.top < rail.top + 40 || r.bottom > rail.bottom - 40){ a.scrollIntoView({block:'nearest'}); }
+    }
+    toTop.classList.toggle('hide', window.scrollY < 500);
+  }
+  let ticking = false;
+  window.addEventListener('scroll', () => { if(!ticking){ requestAnimationFrame(() => { spy(); ticking = false; }); ticking = true; } }, {passive:true});
+  spy();
+
+  toTop.addEventListener('click', () => window.scrollTo({top:0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'}));
+
+  const panel = document.getElementById('notePanel'), btn = document.getElementById('notesBtn');
+  function setNote(open){ panel.hidden = !open; btn.setAttribute('aria-expanded', String(open)); }
+  btn.addEventListener('click', () => setNote(panel.hidden));
+  document.getElementById('noteClose').addEventListener('click', () => { setNote(false); btn.focus(); });
+  document.addEventListener('keydown', e => { if(e.key === 'Escape' && !panel.hidden){ setNote(false); btn.focus(); } });
+})();
+</script>
+<script>
+(function(){
+  const NS = 'http://www.w3.org/2000/svg';
+  const reduce = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function mk(parent, name, attrs, text){
+    const e = document.createElementNS(NS, name);
+    for(const k in attrs) e.setAttribute(k, attrs[k]);
+    if(text != null) e.textContent = text;
+    parent.appendChild(e); return e;
+  }
+  function segBind(id, fn){
+    const btns = Array.from(document.querySelectorAll('#' + id + ' button'));
+    btns.forEach(b => b.addEventListener('click', () => { if(b.disabled) return; btns.forEach(x => x.setAttribute('aria-pressed', String(x === b))); fn(b.dataset.v); }));
+    return btns;
+  }
+  const fmtWait = s => s < 0.0005 ? '0 ms' : s < 1 ? Math.round(s * 1000) + ' ms' : (Math.round(s * 10) / 10) + ' s';
+
+  /* ---------------- Figure 9.3: routing simulator ---------------- */
+  (function(){
+    const S = [{id:'S1', cap:100, w:4, cls:'A'}, {id:'S2', cap:300, w:12, cls:'B'}, {id:'S3', cap:25, w:1, cls:'C'}];
+    const RATE = 340, DUR = 2, N = RATE * DUR, TRAVEL = 0.08;
+    const NAMES = {random:'Random', rr:'Round robin', wrr:'Weighted round robin', least:'Least loaded'};
+    const st = {alg:'rr', hc:'on', down:[false, false, false]};
+    const Y = [14, 94, 174], SX = 420, SW = 240;
+    const lines = document.getElementById('rlines'), servers = document.getElementById('rservers'), dots = document.getElementById('rdots');
+    const clock = document.getElementById('rclock'), chips = document.getElementById('rchips'), cards = document.getElementById('rcards'), out = document.getElementById('rout');
+    const playBtn = document.getElementById('simPlay');
+    const g = S.map((s, i) => {
+      const y = Y[i];
+      const ln = mk(lines, 'line', {x1:150, y1:125, x2:SX, y2:y + 31, class:'s-line', style:'stroke-width:1.2'});
+      const box = mk(servers, 'rect', {x:SX, y, width:SW, height:62, rx:8, class:'s-box'});
+      mk(servers, 'text', {x:SX + 12, y:y + 22, class:'s-tb'}, s.id + ' · ' + s.cap + ' req/s · weight ' + s.w);
+      const dn = mk(servers, 'text', {x:SX + SW - 12, y:y + 22, 'text-anchor':'end', class:'s-bad'}, '');
+      mk(servers, 'rect', {x:SX + 12, y:y + 34, width:SW - 24, height:12, rx:4, class:'s-track'});
+      const fill = mk(servers, 'rect', {x:SX + 12, y:y + 34, width:0, height:12, rx:4, class:'s-q'});
+      const ql = mk(servers, 'text', {x:SX + 12, y:y + 58, class:'s-tm'}, 'queue 0');
+      const card = document.createElement('div');
+      card.innerHTML = '<h4><span>' + s.id + ' · ' + s.cap + ' req/s</span><label><input type="checkbox"> down</label></h4><dl>' +
+        '<dt>Requests</dt><dd data-k="n"></dd><dt>Load vs capacity</dt><dd data-k="load"></dd>' +
+        '<dt>Longest wait</dt><dd data-k="wait"></dd><dt>Queue at 2 s</dt><dd data-k="q"></dd><dt>Failed</dt><dd data-k="fail"></dd></dl>';
+      cards.appendChild(card);
+      card.querySelector('input').addEventListener('change', e => { st.down[i] = e.target.checked; run(false); });
+      return {ln, box, dn, fill, ql, card, dd: k => card.querySelector('[data-k="' + k + '"]')};
+    });
+
+    function rng(a){ return function(){ a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+    function simulate(){
+      const rnd = rng(42);
+      const elig = S.map((_, i) => i).filter(i => st.hc === 'off' || !st.down[i]);
+      const reqs = [], busy = [0, 0, 0], fins = [[], [], []], ptr = [0, 0, 0], cw = [0, 0, 0];
+      let rr = 0;
+      for(let k = 0; k < N; k++){
+        const t = (k + 0.5) / RATE;
+        if(!elig.length){ reqs.push({t, s:-1, fail:true}); continue; }
+        let s;
+        if(st.alg === 'random') s = elig[Math.floor(rnd() * elig.length)];
+        else if(st.alg === 'rr'){ s = elig[rr % elig.length]; rr++; }
+        else if(st.alg === 'wrr'){
+          let tot = 0, best = -1;
+          elig.forEach(i => { cw[i] += S[i].w; tot += S[i].w; if(best < 0 || cw[i] > cw[best]) best = i; });
+          cw[best] -= tot; s = best;
+        } else {
+          let best = -1, bo = Infinity;
+          elig.forEach(i => { while(ptr[i] < fins[i].length && fins[i][ptr[i]] <= t) ptr[i]++; const o = fins[i].length - ptr[i]; if(o < bo){ bo = o; best = i; } });
+          s = best;
+        }
+        if(st.down[s]){ reqs.push({t, s, fail:true}); continue; }
+        const start = Math.max(t, busy[s]), end = start + 1 / S[s].cap;
+        busy[s] = end; fins[s].push(end);
+        reqs.push({t, s, fail:false, start, end});
+      }
+      return reqs;
+    }
+
+    let reqs = [], anim = 0, overFlags = [false, false, false];
+    function drawAt(T){
+      clock.textContent = 't = ' + T.toFixed(2) + ' s';
+      S.forEach((s, i) => {
+        const q = reqs.reduce((a, r) => a + (r.s === i && !r.fail && r.t <= T && r.end > T ? 1 : 0), 0);
+        const cap = 120;
+        g[i].fill.setAttribute('width', Math.min(1, q / cap) * (SW - 24));
+        g[i].fill.setAttribute('class', 's-q' + (overFlags[i] ? ' over' : ''));
+        g[i].ql.textContent = 'queue ' + q + (q > cap ? ' (bar capped)' : '');
+      });
+      while(dots.firstChild) dots.removeChild(dots.firstChild);
+      reqs.forEach(r => {
+        if(r.t > T || r.t <= T - TRAVEL) return;
+        const f = (T - r.t) / TRAVEL;
+        if(r.s < 0){ mk(dots, 'circle', {cx:150, cy:125, r:3, class:'s-fail'}); return; }
+        const x = 150 + f * (SX - 150), y = 125 + f * (Y[r.s] + 31 - 125);
+        mk(dots, 'circle', {cx:x, cy:y, r:2.8, class:r.fail ? 's-fail' : 's-req'});
+      });
+    }
+
+    function summary(){
+      const info = S.map((s, i) => {
+        const mine = reqs.filter(r => r.s === i), ok = mine.filter(r => !r.fail);
+        const load = ok.length / DUR / s.cap;
+        const wait = ok.reduce((a, r) => Math.max(a, r.start - r.t), 0);
+        const q = ok.filter(r => r.end > DUR).length;
+        return {n:mine.length, ok:ok.length, fail:mine.length - ok.length, load, wait, q};
+      });
+      overFlags = info.map(x => Math.round(100 * x.load) > 100);
+      const noElig = reqs.filter(r => r.s < 0).length;
+      S.forEach((s, i) => {
+        const x = info[i], down = st.down[i];
+        g[i].dd('n').textContent = x.n + ' (' + Math.round(100 * x.n / N) + '%)';
+        const ld = g[i].dd('load'); ld.textContent = down ? '—' : Math.round(100 * x.load) + '%'; ld.className = overFlags[i] ? 'bad' : '';
+        const wt = g[i].dd('wait'); wt.textContent = down ? '—' : fmtWait(x.wait); wt.className = x.wait >= 1 ? 'bad' : '';
+        g[i].dd('q').textContent = down ? '—' : String(x.q);
+        const fl = g[i].dd('fail'); fl.textContent = String(x.fail); fl.className = x.fail ? 'bad' : '';
+        g[i].card.className = (overFlags[i] ? 'over' : '') + (down ? ' isdown' : '');
+        g[i].box.setAttribute('class', down ? 's-down' : 's-box');
+        g[i].dn.textContent = down ? 'DOWN' : '';
+        g[i].ln.style.stroke = down ? 'var(--bad)' : '';
+        g[i].ln.style.strokeDasharray = down ? '4 4' : '';
+      });
+      chips.innerHTML = '';
+      reqs.slice(0, 17).forEach(r => {
+        const c = document.createElement('span');
+        c.className = 'chip' + (r.s >= 0 && !r.fail ? ' ' + S[r.s].cls : '');
+        if(r.fail){ c.style.color = 'var(--bad)'; c.style.borderColor = 'var(--bad)'; }
+        c.textContent = r.s < 0 ? '✗' : (r.fail ? '✗' : '') + S[r.s].id;
+        chips.appendChild(c);
+      });
+      const failed = reqs.filter(r => r.fail).length;
+      let msg = NAMES[st.alg] + ': ';
+      if(noElig){ msg += 'every server is down, so all ' + N + ' requests fail.'; out.textContent = msg; return; }
+      msg += 'shares ' + S.map((s, i) => s.id + ' ' + Math.round(100 * info[i].n / N) + '%').join(', ') + '. ';
+      const over = S.map((s, i) => ({s, x:info[i], i})).filter(o => overFlags[o.i]);
+      if(over.length) msg += over.map(o => o.s.id + ' runs at ' + Math.round(100 * o.x.load) + '% of capacity, so its queue grows and its longest wait is ' + fmtWait(o.x.wait)).join('; ') + '.';
+      else msg += 'No server is over capacity; the longest wait is ' + fmtWait(Math.max(...info.map(x => x.wait))) + '.';
+      if(failed) msg += ' ' + failed + ' requests (' + Math.round(100 * failed / N) + '%) failed: they were sent to a server that is down' + (st.alg === 'least' ? ' (in this model a dead server never builds up a queue, so least loaded keeps choosing it)' : '') + '.';
+      out.textContent = msg;
+    }
+
+    function run(animate){
+      cancelAnimationFrame(anim);
+      reqs = simulate(); summary();
+      if(!animate || reduce()){ drawAt(DUR); playBtn.textContent = 'Play'; return; }
+      playBtn.textContent = 'Replay';
+      const t0 = performance.now(), REAL = 6000;
+      (function frame(now){
+        const T = Math.min(DUR, (now - t0) / REAL * DUR);
+        drawAt(T);
+        if(T < DUR) anim = requestAnimationFrame(frame);
+      })(t0);
+    }
+    segBind('algSeg', v => { st.alg = v; run(false); });
+    segBind('hcSeg', v => { st.hc = v; run(false); });
+    playBtn.addEventListener('click', () => run(true));
+    run(false);
+  })();
+
+  /* ---------------- Figure 9.4: fail-over ---------------- */
+  (function(){
+    const SY = [30, 90, 150, 210];
+    const srvG = document.getElementById('fservers'), p1 = document.getElementById('f1paths'), p2 = document.getElementById('f2paths');
+    SY.forEach((y, i) => {
+      mk(srvG, 'rect', {x:520, y, width:140, height:40, rx:7, class:'s-box'});
+      mk(srvG, 'text', {x:590, y:y + 25, 'text-anchor':'middle', class:'s-t'}, 'Server ' + 'ABCD'[i]);
+      mk(p1, 'path', {d:'M410,72 C465,72 465,' + (y + 20) + ' 520,' + (y + 20), class:'flow'});
+      mk(p2, 'path', {d:'M410,222 C465,222 465,' + (y + 20) + ' 520,' + (y + 20), class:'flow off'});
+    });
+    const $ = id => document.getElementById(id);
+    const st = {mode:'ap', stb:'hot', phase:'normal'};
+    let timers = [], t0 = 0, barRaf = 0;
+    const stbBtns = segBind('fStbSeg', v => { st.stb = v; reset(); });
+    segBind('fModeSeg', v => { st.mode = v; reset(); });
+    function flows(group, cls){ Array.from(group.children).forEach(p => p.setAttribute('class', cls)); }
+    function setDown(sec, done){
+      $('fDownT').textContent = sec === 0 ? 'none' : (Math.round(sec * 10) / 10) + ' s in this demo' + (done ? '' : '…');
+      $('fDownBar').style.width = Math.min(100, sec / 6 * 100) + '%';
+    }
+    function render(){
+      const ap = st.mode === 'ap', ph = st.phase, cold = st.stb === 'cold';
+      stbBtns.forEach(b => b.disabled = !ap);
+      $('fFail').textContent = ph === 'normal' ? 'Fail LB1' : 'Restore LB1';
+      const lb1Dead = ph !== 'normal';
+      $('lb1r').setAttribute('class', lb1Dead ? 's-down' : 's-acc');
+      $('lb1x').textContent = lb1Dead ? '✗ down' : '';
+      $('fc1').setAttribute('class', 'flow' + (lb1Dead ? (ph === 'recovered' && !ap ? ' off' : ' broken') : ''));
+      flows(p1, 'flow' + (lb1Dead ? ' broken' : ''));
+      if(ap){
+        $('fDnsH').textContent = 'Clients connect to'; $('fDns1').textContent = '192.168.1.1'; $('fDns2').textContent = '(the VIP)';
+        $('fDns1').style.textDecoration = ''; $('fDns1').style.fill = '';
+        $('lb1n').textContent = 'LB1 · 192.168.1.3'; $('lb2n').textContent = 'LB2 · 192.168.1.4';
+        $('lb1s').textContent = lb1Dead ? 'priority 101' : 'active · priority 101';
+        $('fvip').style.display = '';
+        $('fhb').style.display = ''; $('fhbT').style.display = '';
+        $('fhb').setAttribute('class', 'hb' + (lb1Dead ? ' off' : ''));
+        $('fhbT').textContent = lb1Dead ? 'no heartbeat' : 'heartbeat';
+        const lb2On = ph === 'recovered';
+        $('fvip').style.transform = lb2On ? 'translate(0px,150px)' : '';
+        $('lb2r').setAttribute('class', lb2On ? 's-acc' : 's-box');
+        $('lb2s').textContent = lb2On ? 'active · holds the VIP' : ph === 'booting' ? 'starting up…' : cold ? 'passive · cold standby (off)' : 'passive · hot standby';
+        $('lb2x').textContent = lb2On ? '' : 'priority 100';
+        $('fc2').setAttribute('class', 'flow' + (lb2On ? '' : ' off'));
+        flows(p2, 'flow' + (lb2On ? '' : ' off'));
+      } else {
+        $('fDnsH').textContent = 'DNS for www'; $('fDns1').textContent = '203.0.113.10'; $('fDns2').textContent = '203.0.113.11';
+        const removed = ph === 'detected' || ph === 'recovered';
+        $('fDns1').style.textDecoration = removed ? 'line-through' : ''; $('fDns1').style.fill = removed ? 'var(--bad)' : '';
+        $('lb1n').textContent = 'LB1 · 203.0.113.10'; $('lb2n').textContent = 'LB2 · 203.0.113.11';
+        $('lb1s').textContent = lb1Dead ? '' : 'active';
+        $('fvip').style.display = 'none'; $('fvip').style.transform = '';
+        $('fhb').style.display = 'none'; $('fhbT').style.display = 'none';
+        $('lb2r').setAttribute('class', 's-acc');
+        $('lb2s').textContent = ph === 'recovered' ? 'active · all traffic' : 'active';
+        $('lb2x').textContent = '';
+        $('fc2').setAttribute('class', 'flow'); flows(p2, 'flow');
+      }
+      const M = {
+        ap:{
+          normal: cold ? 'Only LB1 handles traffic. LB2 is on cold standby: it is not running and would have to start up before taking over.' : 'Only LB1 handles traffic. LB1 and LB2 exchange heartbeats; LB2 is running on hot standby.',
+          failed:'LB1 fails. Requests to 192.168.1.1 now go nowhere.',
+          detected:'The heartbeat stops arriving, so LB1 is declared down.',
+          booting:'LB2 was on cold standby, so it must start up before it can take over. Clients are still cut off.',
+          recovered:'LB2 takes over the virtual IP 192.168.1.1 and resumes service. Clients keep using the same address.'
+        },
+        aa:{
+          normal:'Both load balancers handle traffic. DNS hands out both public addresses, so clients are split between them.',
+          failed:'LB1 fails. Clients that resolved 203.0.113.10 get errors; clients using LB2 are unaffected.',
+          detected:'DNS stops returning 203.0.113.10. Clients holding a cached answer keep failing until its TTL expires.',
+          recovered:'Cached answers have expired, so every client now uses LB2, which carries all the traffic. It needs the capacity to do so.'
+        }
+      };
+      $('fout').textContent = M[st.mode][ph];
+    }
+    function clear(){ timers.forEach(clearTimeout); timers = []; cancelAnimationFrame(barRaf); }
+    function reset(){ clear(); st.phase = 'normal'; setDown(0, true); render(); }
+    function at(ms, phase){ timers.push(setTimeout(() => { st.phase = phase; render(); if(phase === 'recovered'){ cancelAnimationFrame(barRaf); setDown(ms / 1000, true); } }, reduce() ? 0 : ms)); }
+    function fail(){
+      clear(); st.phase = 'failed'; render(); t0 = performance.now();
+      let end;
+      if(st.mode === 'ap'){
+        at(1400, 'detected');
+        if(st.stb === 'cold'){ at(2600, 'booting'); end = 5200; } else end = 2400;
+      } else { at(1600, 'detected'); end = 3600; }
+      at(end, 'recovered');
+      if(reduce()){ setDown(end / 1000, true); return; }
+      (function tick(now){ const s = (now - t0) / 1000; if(s < end / 1000){ setDown(s, false); barRaf = requestAnimationFrame(tick); } })(t0);
+    }
+    $('fFail').addEventListener('click', () => { st.phase === 'normal' ? fail() : reset(); });
+    reset();
+  })();
+
+  /* ---------------- Figure 9.5: layer 4 vs layer 7 stepper ---------------- */
+  (function(){
+    const PY = [16, 104, 192];
+    const POOLS = {
+      '4':[['Server 1','10.0.0.11 · full copy of app'],['Server 2','10.0.0.12 · full copy of app'],['Server 3','10.0.0.13 · full copy of app']],
+      '7':[['Video servers','host the videos'],['Web servers','everything else'],['Billing servers','security-hardened']]
+    };
+    const paths = document.getElementById('lpaths'), poolsG = document.getElementById('lpools');
+    const P = {};
+    function seg(key, cls, d){ const gg = mk(paths, 'g', {class:'st ' + cls}); mk(gg, 'path', {d}); P[key] = gg; }
+    seg('c', 'req', 'M142,124 H253'); seg('cr', 'res', 'M253,146 H142');
+    PY.forEach((y, i) => {
+      seg('p' + i, 'req', 'M407,122 C452,122 452,' + (y + 22) + ' 498,' + (y + 22));
+      seg('pr' + i, 'res', 'M498,' + (y + 38) + ' C452,' + (y + 38) + ' 452,148 407,148');
+    });
+    const poolEls = PY.map(y => {
+      const gg = mk(poolsG, 'g', {class:'pool'});
+      mk(gg, 'rect', {x:500, y, width:165, height:56, rx:8, class:'s-box'});
+      const a = mk(gg, 'text', {x:582, y:y + 24, 'text-anchor':'middle', class:'s-tb'});
+      const b = mk(gg, 'text', {x:582, y:y + 42, 'text-anchor':'middle', class:'s-ts'});
+      return {gg, a, b};
+    });
+    const st = {layer:'4', req:'video', i:0};
+    const L = () => {
+      const video = st.req === 'video';
+      const line = video ? 'GET /videos/42 HTTP/1.1' : 'POST /billing/pay HTTP/1.1';
+      if(st.layer === '4') return [
+        {t:'Client sends the first packet', on:['c'], f:[['Source','198.51.100.7:51514'],['Destination','203.0.113.10:443'],['Payload','TLS-encrypted bytes; the request is inside, unread']],
+         x:'The client knows only the load balancer’s published address, for example from DNS. The request travels encrypted inside the TCP stream.'},
+        {t:'Load balancer picks a server from addresses and ports', on:['c'], think:true, f:[['Inspected','<mark>198.51.100.7:51514 → 203.0.113.10:443</mark>'],['Not inspected','the payload'],['Choice','Server 2']],
+         x:'A layer 4 balancer decides from the addresses and ports in the first few packets. It never reads the request, so GET /videos/42 and POST /billing/pay are treated the same. Every server must therefore be able to answer every request.'},
+        {t:'NAT: destination rewritten, packet forwarded', on:['c','p'], pick:true, f:[['Source','198.51.100.7:51514'],['Destination','<mark>10.0.0.12:443</mark> (was 203.0.113.10:443)'],['Payload','unchanged']],
+         x:'The balancer changes the destination from its own address to the chosen server’s and forwards the packet. It does the same for every packet of the connection.'},
+        {t:'Reply: source rewritten back', on:['pr','cr'], pick:true, f:[['Source','<mark>203.0.113.10:443</mark> (was 10.0.0.12:443)'],['Destination','198.51.100.7:51514'],['Payload','encrypted response, unchanged']],
+         x:'On the way back it swaps the server’s address for its own, so the client only ever sees the balancer. The payload passed through untouched, so the server decrypts TLS itself and needs the certificate.'}
+      ];
+      return [
+        {t:'Connection 1: client to load balancer', on:['c'], f:[['Connection 1','198.51.100.7:51514 → 203.0.113.10:443'],['TLS','<mark>terminated here</mark>; certificate on the load balancer']],
+         x:'The balancer terminates the client’s connection and decrypts it: SSL termination.'},
+        {t:'Load balancer reads the request', think:true, f:[['Request line','<mark>' + line + '</mark>'],['Host','www.example.com'],['Cookie','session=…']],
+         x:'Unlike layer 4, it sees the whole message: URL, headers and cookies.'},
+        {t:'Decision by content', think:true, pick:true, f:[['Rule', video ? '<mark>/videos/…</mark> → video servers' : '<mark>/billing/…</mark> → billing servers']],
+         x: video ? 'Video traffic goes to the servers that host videos. Switch the request to see billing traffic take a different route.' : 'Sensitive billing traffic goes to the security-hardened servers. Switch the request to see video traffic take a different route.'},
+        {t:'Connection 2: load balancer to the chosen server', on:['p'], pick:true, f:[['Connection 2','10.0.0.2 → ' + (video ? '10.0.1.21' : '10.0.3.21') + ':80, new or kept alive'],['Added header','<mark>X-Forwarded-For: 198.51.100.7</mark>']],
+         x:'It opens a new connection to the server, or reuses one kept alive, and forwards the request. The server now sees the balancer’s address, so the client’s address is passed in X-Forwarded-For.'},
+        {t:'Response over both connections', on:['pr','cr'], pick:true, f:[['Connection 2','server → load balancer: 200 OK'],['Connection 1','load balancer → client: 200 OK, re-encrypted']],
+         x:'The server answers the balancer, which encrypts the response and sends it to the client over connection 1.'}
+      ];
+    };
+    const $ = id => document.getElementById(id);
+    function render(){
+      const steps = L(), s = steps[st.i];
+      const target = st.layer === '4' ? 1 : (st.req === 'video' ? 0 : 2);
+      POOLS[st.layer].forEach((p, i) => { poolEls[i].a.textContent = p[0]; poolEls[i].b.textContent = p[1]; poolEls[i].gg.setAttribute('class', 'pool' + (s.pick && i === target ? ' pick' : '')); });
+      $('lReads').textContent = st.layer === '4' ? 'reads: IPs + ports' : 'reads: URL, headers, cookies';
+      $('lLb').setAttribute('class', s.think ? 'lbthink' : '');
+      Object.keys(P).forEach(k => P[k].classList.remove('on'));
+      (s.on || []).forEach(k => { const key = (k === 'p' || k === 'pr') ? k + target : k; P[key].classList.add('on'); });
+      $('lTitle').textContent = (st.i + 1) + ' · ' + s.t;
+      $('lFields').innerHTML = s.f.map(([k, v]) => '<dt>' + k + '</dt><dd>' + v + '</dd>').join('');
+      $('lText').textContent = s.x;
+      $('lCount').textContent = 'Step ' + (st.i + 1) + ' / ' + steps.length;
+      $('lPrev').disabled = st.i === 0; $('lNext').disabled = st.i === steps.length - 1;
+    }
+    segBind('lLayerSeg', v => { st.layer = v; st.i = 0; render(); });
+    segBind('lReqSeg', v => { st.req = v; render(); });
+    $('lPrev').addEventListener('click', () => { if(st.i > 0){ st.i--; render(); } });
+    $('lNext').addEventListener('click', () => { if(st.i < L().length - 1){ st.i++; render(); } });
+    $('lReset').addEventListener('click', () => { st.i = 0; render(); });
+    render();
+  })();
+})();
+</script>
+
+<script>
+(function(){
+  /* theme toggle: follows the system until the reader picks; the choice is shared by every page on the site */
+  var root = document.documentElement, btn = document.getElementById('themeBtn');
+  var mq = window.matchMedia('(prefers-color-scheme: dark)');
+  function system(){ return mq.matches ? 'dark' : 'light'; }
+  function current(){ var t = root.getAttribute('data-theme'); return (t === 'light' || t === 'dark') ? t : system(); }
+  function label(){ var next = current() === 'dark' ? 'light' : 'dark'; btn.setAttribute('aria-label', 'Switch to ' + next + ' mode'); btn.title = 'Switch to ' + next + ' mode'; }
+  btn.addEventListener('click', function(){
+    var next = current() === 'dark' ? 'light' : 'dark';
+    if(next === system()){ root.removeAttribute('data-theme'); try{ localStorage.removeItem('sysdes-theme'); }catch(e){} }
+    else { root.setAttribute('data-theme', next); try{ localStorage.setItem('sysdes-theme', next); }catch(e){} }
+    label();
+  });
+  if(mq.addEventListener) mq.addEventListener('change', label); else mq.addListener(label);
+  label();
+})();
+</script>
+</body>
+</html>
