@@ -1,0 +1,826 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Unit 6 · Availability Patterns</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+img{max-width:100%}
+[hidden]{display:none!important}
+
+/* Layout: two-column study page — sticky, independently scrolling contents rail on the left; reading column on the right. Rail becomes a sticky top bar on small screens. */
+:root{
+  --bg:#F3F5F6; --surface:#FFFFFF; --ink:#17212B; --muted:#56636F; --line:#D5DCE1;
+  --accent:#0B6B75; --accent-soft:#DFEEEF; --warm:#A85A16; --warm-soft:#FAEEE0;
+  --code-bg:#EBF0F2; --good:#2E7D4F; --bad:#B23B3B;
+  --font:"IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --rail:270px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F1519; --surface:#151D23; --ink:#E2E8EC; --muted:#94A3AE; --line:#2A363F;
+  --accent:#55C2CA; --accent-soft:#123038; --warm:#E3A466; --warm-soft:#2D2218;
+  --code-bg:#1B252C; --good:#6FCB94; --bad:#EC8A8A; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F1519; --surface:#151D23; --ink:#E2E8EC; --muted:#94A3AE; --line:#2A363F;
+  --accent:#55C2CA; --accent-soft:#123038; --warm:#E3A466; --warm-soft:#2D2218;
+  --code-bg:#1B252C; --good:#6FCB94; --bad:#EC8A8A; color-scheme:dark}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.65;margin:0}
+a{color:var(--accent);text-underline-offset:2px}
+a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+code,kbd{font-family:var(--mono);font-size:.88em;background:var(--code-bg);padding:.08em .35em;border-radius:4px}
+
+.shell{display:grid;grid-template-columns:var(--rail) minmax(0,1fr);max-width:1240px;margin:0 auto;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));gap:40px}
+
+/* ---------- Contents rail ---------- */
+.rail{position:sticky;top:env(safe-area-inset-top, 0px);height:100vh;overflow-y:auto;padding-block:32px;
+  scrollbar-width:thin;overscroll-behavior:contain}
+.rail-head{display:flex;flex-direction:column;align-items:flex-start;gap:14px;position:sticky;top:-32px;z-index:2;background:var(--bg);padding-block:32px 4px;margin-top:-32px;margin-bottom:0}
+.back{display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:var(--ink);font-size:.85rem;font-weight:500;
+  border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 12px 6px 9px}
+.back:hover{border-color:var(--accent);color:var(--accent)}
+.rail h2{font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 12px;font-weight:600}
+.toc-toggle{display:none}
+.toc ol{list-style:none;margin:0;padding:0}
+.toc li{margin:0}
+.toc a{display:block;text-decoration:none;color:var(--muted);font-size:.9rem;line-height:1.35;padding:6px 10px;border-left:2px solid var(--line)}
+.toc a:hover{color:var(--ink)}
+.toc ol ol a{padding-left:24px;font-size:.84rem}
+.toc a.active{color:var(--accent);border-left-color:var(--accent);background:var(--accent-soft);font-weight:600}
+.toc a.parent-active{color:var(--ink);border-left-color:var(--accent)}
+.toc a{text-align:left;hyphens:none;scroll-margin-top:140px;scroll-margin-bottom:24px}
+.toc .num{font-family:var(--mono);font-size:.8em;margin-right:6px}
+
+/* ---------- Main ---------- */
+main{min-width:0;padding-block:40px 120px;max-width:780px}
+p,li,figcaption,.note p{text-align:justify;hyphens:auto;-webkit-hyphens:auto}
+header.unit{border-bottom:1px solid var(--line);padding-bottom:28px;margin-bottom:8px}
+.eyebrow{font-family:var(--mono);font-size:.8rem;color:var(--accent);letter-spacing:.06em;margin:0 0 8px;text-align:left}
+h1{font-size:clamp(1.9rem,4.4vw,2.6rem);line-height:1.15;margin:0 0 14px;font-weight:700;text-wrap:balance;letter-spacing:-.01em}
+h2{font-size:1.6rem;line-height:1.25;margin:64px 0 12px;text-wrap:balance;font-weight:700}
+h3{font-size:1.2rem;line-height:1.3;margin:44px 0 8px;text-wrap:balance;font-weight:600}
+h4{font-size:1rem;margin:26px 0 6px;font-weight:600}
+h2 .num,h3 .num{font-family:var(--mono);color:var(--accent);font-weight:500;margin-right:10px;font-size:.85em}
+.lede{font-size:1.08rem;color:var(--muted);margin:0}
+.meta{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:16px;font-size:.85rem;color:var(--muted)}
+.meta span{white-space:nowrap}
+ul,ol{padding-left:1.3em}
+li{margin:4px 0}
+.src{font-size:.72em;vertical-align:super;line-height:0;text-decoration:none;font-family:var(--mono);margin-left:1px}
+
+/* callouts */
+.callout{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:14px 18px;margin:20px 0}
+.callout.tip{border-left:4px solid var(--accent)}
+.callout.warn{border-left:4px solid var(--warm);background:var(--warm-soft)}
+.callout .label{display:block;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--muted);margin-bottom:4px;text-align:left}
+.callout p{margin:4px 0}
+
+.prosCons{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:16px 0}
+.prosCons div{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 16px;min-width:0}
+.prosCons h4{margin:4px 0;font-size:.85rem;letter-spacing:.06em;text-transform:uppercase}
+.prosCons .pro h4{color:var(--good)} .prosCons .con h4{color:var(--bad)}
+.prosCons ul{margin:4px 0;padding-left:1.1em}
+
+blockquote{margin:18px 0;padding:8px 18px;border-left:3px solid var(--warm);color:var(--ink);font-style:italic}
+blockquote cite{display:block;font-style:normal;font-size:.85rem;color:var(--muted);margin-top:4px}
+
+/* figures + tables */
+figure{margin:26px 0;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px}
+.figwrap{overflow-x:auto}
+figure svg{display:block;width:100%;height:auto;min-width:520px}
+figcaption{font-size:.88rem;color:var(--muted);margin-top:10px;border-top:1px dashed var(--line);padding-top:8px}
+figcaption b{color:var(--ink);font-family:var(--mono);font-weight:500;margin-right:4px}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem;min-width:520px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;font-size:.8rem;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+td code{white-space:nowrap}
+table.hist td code{white-space:normal;word-break:break-word}
+.tcap{caption-side:top;text-align:left;font-size:.88rem;color:var(--muted);padding-bottom:8px}
+.tcap b{color:var(--ink);font-family:var(--mono);font-weight:500;margin-right:4px}
+
+table.tt td[colspan],table.tt td.g,table.tt td.o,table.tt td.b{text-align:center;font-weight:500}
+table.tt td.g{background:color-mix(in srgb, var(--good) 18%, transparent)}
+table.tt td.o{background:color-mix(in srgb, #D9B300 22%, transparent)}
+table.tt td.b{background:color-mix(in srgb, var(--bad) 18%, transparent)}
+table.tt{table-layout:fixed}
+table.tt th:first-child,table.tt td:first-child{width:18%}
+table.tt th,table.tt td{border:1px solid var(--line)}
+table.tt th:not(:first-child){text-align:center}
+/* svg tokens */
+.s-box{fill:var(--surface);stroke:var(--line);stroke-width:1.5}
+.s-acc{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5}
+.s-warm{fill:var(--warm-soft);stroke:var(--warm);stroke-width:1.5}
+.s-line{stroke:var(--muted);stroke-width:1.5;fill:none}
+.s-dash{stroke:var(--muted);stroke-width:1.3;fill:none;stroke-dasharray:5 4}
+.s-t{fill:var(--ink);font-family:var(--font);font-size:13px}
+.s-tb{fill:var(--ink);font-family:var(--font);font-size:13px;font-weight:600}
+.s-ts{fill:var(--muted);font-family:var(--font);font-size:11px}
+.s-tm{fill:var(--muted);font-family:var(--mono);font-size:11px}
+.s-dot{fill:var(--accent)} .s-dot2{fill:var(--warm)}
+.s-arrow{fill:var(--muted)}
+@media (prefers-reduced-motion: reduce){.anim{display:none}}
+
+/* resource cards */
+.res{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:16px 0}
+.res a{display:block;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:12px 14px;text-decoration:none;color:var(--ink);min-width:0}
+.res a:hover{border-color:var(--accent)}
+.res b{display:block;font-size:.95rem}
+.res span{display:block;font-size:.82rem;color:var(--muted);margin-top:2px}
+ol.sources{font-size:.88rem;padding-left:2.2em}
+ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
+
+/* floating buttons */
+.fab{position:fixed;right:calc(18px + env(safe-area-inset-right, 0px));width:46px;height:46px;border-radius:50%;
+  border:1px solid var(--line);background:var(--surface);color:var(--ink);display:grid;place-items:center;cursor:pointer;
+  box-shadow:0 4px 14px rgba(0,0,0,.12);z-index:40;transition:opacity .2s, transform .2s}
+.fab svg{width:20px;height:20px}
+#toTop{bottom:calc(18px + env(safe-area-inset-bottom, 0px))}
+#notesBtn{bottom:calc(74px + env(safe-area-inset-bottom, 0px));background:var(--warm-soft);border-color:var(--warm);color:var(--warm)}
+#toTop.hide{opacity:0;pointer-events:none;transform:translateY(8px)}
+
+/* key-terms note widget */
+.note{position:fixed;right:calc(18px + env(safe-area-inset-right, 0px));bottom:calc(130px + env(safe-area-inset-bottom, 0px));
+  width:min(380px,calc(100vw - 36px));max-height:min(70vh,620px);overflow:auto;z-index:45;
+  background:var(--warm-soft);border:1px solid var(--warm);border-radius:12px;padding:0 18px 16px;
+  box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.note-head{position:sticky;top:0;background:var(--warm-soft);display:flex;justify-content:space-between;align-items:center;padding:14px 0 8px;border-bottom:1px dashed var(--warm)}
+.note-head strong{font-size:.95rem}
+.note-head button{border:0;background:none;color:var(--ink);font-size:1.3rem;cursor:pointer;line-height:1;padding:4px 8px}
+.note dl{margin:8px 0 0}
+.note dt{font-weight:600;font-size:.9rem;margin-top:10px}
+.note dd{margin:2px 0 0;font-size:.85rem;color:var(--ink);text-align:justify;hyphens:auto}
+.note h5{font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--warm);margin:16px 0 0}
+
+/* ---------- small screens ---------- */
+@media (max-width: 960px){
+  .shell{display:block}
+  body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top, 0px);z-index:31;background:var(--surface)}
+  .rail{position:sticky;top:env(safe-area-inset-top, 0px);z-index:30;height:auto;max-height:none;overflow:visible;
+    background:var(--surface);border-bottom:1px solid var(--line);padding:0;
+    margin-left:calc(-1 * max(16px, env(safe-area-inset-left, 0px)));margin-right:calc(-1 * max(16px, env(safe-area-inset-right, 0px)));
+    padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+  .rail-head{position:static;flex-direction:row;align-items:center;justify-content:space-between;padding-block:10px;margin-top:0;background:transparent}
+  .rail h2{display:none}
+  .toc-toggle{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);
+    border-radius:8px;padding:6px 10px;font:500 .85rem var(--font);cursor:pointer;min-width:0;max-width:72%}
+  .toc-toggle span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .toc{max-height:60vh;overflow-y:auto;padding-bottom:12px}
+  .toc[hidden]{display:none!important}
+  html{scroll-padding-top:70px}
+  main{padding-top:24px}
+}
+@media (min-width: 961px){ .toc[hidden]{display:block!important} }
+/* ---------- Unit 6 additions ---------- */
+figure img{display:block;margin:0 auto;max-width:520px;width:100%;height:auto;border-radius:8px;background:#fff}
+.calc{display:grid;gap:14px}
+.calc-row{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
+.calc label{font-size:.88rem;font-weight:500}
+.calc input[type=range]{flex:1 1 220px;accent-color:var(--accent)}
+.calc input[type=number]{width:110px;font:500 .95rem var(--mono);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.calc output.big{font:600 1.25rem var(--mono);color:var(--accent)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--bg);color:var(--ink);font:500 .85rem var(--font);padding:7px 14px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--surface)}
+.stat{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
+.stat div{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
+.stat span{display:block;font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.stat b{display:block;font:500 1rem var(--mono);margin-top:2px;overflow-wrap:anywhere}
+.calc .hint{font-size:.82rem;color:var(--muted);margin:0}
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <aside class="rail" aria-label="Contents">
+    <div class="rail-head">
+      <a class="back" href="index.html" title="Back to all units"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>All units</a>
+      <h2>Contents</h2>
+      <button class="toc-toggle" id="tocToggle" aria-expanded="false" aria-controls="toc">
+        <span id="tocCurrent">Contents</span>
+        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.6" fill="none"/></svg>
+      </button>
+    </div>
+    <nav class="toc" id="toc" hidden>
+      <ol>
+        <li><a href="#overview"><span class="num">6.0</span>Two patterns</a></li>
+        <li><a href="#fail-over"><span class="num">6.1</span>Fail-over</a>
+          <ol>
+            <li><a href="#active-passive">Active-passive</a></li>
+            <li><a href="#active-active">Active-active</a></li>
+            <li><a href="#failback">Fail-back and other cases</a></li>
+            <li><a href="#failover-cons">Disadvantages</a></li>
+          </ol>
+        </li>
+        <li><a href="#replication"><span class="num">6.2</span>Replication</a>
+          <ol>
+            <li><a href="#push-pull">Push vs pull</a></li>
+            <li><a href="#master-slave">Master-slave</a></li>
+            <li><a href="#master-master">Master-master</a></li>
+            <li><a href="#buddy">Buddy replication</a></li>
+            <li><a href="#replication-cons">Disadvantages</a></li>
+          </ol>
+        </li>
+        <li><a href="#numbers"><span class="num">6.3</span>Availability in numbers</a>
+          <ol>
+            <li><a href="#nines">Counting nines</a></li>
+            <li><a href="#seq-par">Sequence vs parallel</a></li>
+          </ol>
+        </li>
+        <li><a href="#resources"><span class="num">6.4</span>Resources</a></li>
+        <li><a href="#sources"><span class="num">6.5</span>Sources</a></li>
+      </ol>
+    </nav>
+  </aside>
+
+  <main id="top">
+    <header class="unit">
+      <p class="eyebrow">SYSTEM DESIGN PRIMER · UNIT 6</p>
+      <h1>Availability patterns</h1>
+      <p class="lede">Unit 4 defined availability as every request getting a response. This unit covers how systems achieve it: keep a spare ready to take over (<b>fail-over</b>), keep extra copies of the data (<b>replication</b>), and measure the result in <b>nines</b>.<a class="src" href="#s1">[1]</a></p>
+      <div class="meta"><span>Primer section · Availability patterns</span><span>Primer · Master-slave &amp; master-master replication</span><span>Jonas Bonér · “Scalability, Availability &amp; Stability Patterns”</span></div>
+    </header>
+
+    <!-- ===================== 6.0 ===================== -->
+    <section id="overview">
+      <h2><span class="num">6.0</span>Two complementary patterns</h2>
+      <p>The primer names two patterns that together support <b>high availability</b>: fail-over and replication.<a class="src" href="#s1">[1]</a> They solve different halves of the problem:</p>
+      <ul>
+        <li><b>Fail-over</b> keeps the <i>service</i> answering: when a server dies, another one takes its place.</li>
+        <li><b>Replication</b> keeps the <i>data</i> available: the server that takes over needs a copy of the data to serve.</li>
+      </ul>
+      <p>Bonér’s deck, the source the primer credits for its replication diagrams, groups them the same way under “Availability patterns”: fail-over, then replication in four forms (master-slave, tree, master-master and buddy).<a class="src" href="#s3">[3]</a></p>
+    </section>
+
+    <!-- ===================== 6.1 ===================== -->
+    <section id="fail-over">
+      <h2><span class="num">6.1</span>Fail-over</h2>
+      <p><b>Fail-over</b> is switching work from a failed server to a working one. The primer describes two arrangements, which differ in whether the second server handles traffic before anything goes wrong.<a class="src" href="#s1">[1]</a></p>
+
+      <h3 id="active-passive">Active-passive</h3>
+      <p>One server is <b>active</b> and handles all traffic; the other is <b>passive</b>, on standby. The two exchange <b>heartbeats</b>, small periodic “I’m alive” messages. If the heartbeat is interrupted, the passive server takes over the active server’s <b>IP address</b> and resumes service. Because the address moves, clients keep using the same IP and don’t need to know a switch happened.<a class="src" href="#s1">[1]</a></p>
+      <p>How long the service is down depends on the standby’s state:<a class="src" href="#s1">[1]</a></p>
+      <ul>
+        <li><b>Hot standby</b>: the passive server is already running, so it can take over almost at once.</li>
+        <li><b>Cold standby</b>: the passive server must first start up, so downtime is longer.</li>
+      </ul>
+      <p>Active-passive fail-over is also called <b>master-slave fail-over</b>.<a class="src" href="#s1">[1]</a></p>
+      <figure>
+        <div class="figwrap">
+          <svg viewBox="0 0 640 270" role="img" aria-labelledby="f1t" class="play">
+            <title id="f1t">Active-passive fail-over. Clients send traffic to IP 203.0.113.10, held by server A, which is active, while server B is a passive hot standby. The servers exchange heartbeats. Server A goes down and the heartbeat is lost. Server B then becomes active and takes over the IP address, so client traffic now reaches B.</title>
+            <defs>
+              <marker id="ah1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="s-arrow"/></marker>
+              <path id="p1a" d="M130,128 L414,62"/>
+              <path id="p1b" d="M130,142 L414,208"/>
+            </defs>
+            <rect x="20" y="110" width="110" height="50" rx="10" class="s-box"/><text x="75" y="140" text-anchor="middle" class="s-tb">Clients</text>
+            <!-- heartbeat link (base) -->
+            <line x1="515" y1="94" x2="515" y2="176" class="s-dash"/>
+
+            <!-- Server A: active -->
+            <g>
+              <animate attributeName="opacity" dur="9s" repeatCount="indefinite" values="1;1;0;0" keyTimes="0;.42;.45;1"/>
+              <rect x="420" y="30" width="190" height="64" rx="10" class="s-acc"/>
+              <circle cx="474" cy="72" r="5" fill="var(--good)"/>
+              <text x="484" y="76" class="s-ts" style="fill:var(--good)">ACTIVE · serving</text>
+            </g>
+            <!-- Server A: down -->
+            <g opacity="0">
+              <animate attributeName="opacity" dur="9s" repeatCount="indefinite" values="0;0;1;1" keyTimes="0;.42;.45;1"/>
+              <rect x="420" y="30" width="190" height="64" rx="10" fill="var(--bad)" fill-opacity=".12" stroke="var(--bad)" stroke-width="1.5" stroke-dasharray="6 4"/>
+              <circle cx="474" cy="72" r="5" fill="none" stroke="var(--bad)" stroke-width="2"/>
+              <text x="484" y="76" class="s-ts" style="fill:var(--bad);font-weight:600">DOWN · no response</text>
+              <line x1="505" y1="128" x2="525" y2="148" stroke="var(--bad)" stroke-width="2.5"/>
+              <line x1="525" y1="128" x2="505" y2="148" stroke="var(--bad)" stroke-width="2.5"/>
+              <text x="534" y="142" class="s-tm" style="fill:var(--bad);font-weight:600">heartbeat lost</text>
+            </g>
+            <text x="515" y="56" text-anchor="middle" class="s-tb">Server A</text>
+
+            <!-- heartbeat OK -->
+            <g>
+              <animate attributeName="opacity" dur="9s" repeatCount="indefinite" values="1;1;0;0" keyTimes="0;.42;.45;1"/>
+              <text x="525" y="140" class="s-tm">heartbeat</text>
+              <circle r="5" class="s-dot"><animateMotion dur="1.5s" repeatCount="indefinite" path="M515,96 L515,174"/></circle>
+            </g>
+
+            <!-- Server B: passive -->
+            <rect x="420" y="176" width="190" height="64" rx="10" class="s-box"/>
+            <g>
+              <animate attributeName="opacity" dur="9s" repeatCount="indefinite" values="1;1;0;0" keyTimes="0;.6;.65;1"/>
+              <circle cx="470" cy="218" r="5" fill="none" stroke="var(--muted)" stroke-width="2"/>
+              <text x="480" y="222" class="s-ts">PASSIVE · hot standby</text>
+            </g>
+            <!-- Server B: active -->
+            <g opacity="0">
+              <animate attributeName="opacity" dur="9s" repeatCount="indefinite" values="0;0;1;1" keyTimes="0;.6;.65;1"/>
+              <rect x="420" y="176" width="190" height="64" rx="10" class="s-acc"/>
+              <circle cx="470" cy="218" r="5" fill="var(--good)"/>
+              <text x="480" y="222" class="s-ts" style="fill:var(--good)">ACTIVE · took over IP</text>
+            </g>
+            <text x="515" y="202" text-anchor="middle" class="s-tb">Server B</text>
+
+            <!-- traffic to A -->
+            <g>
+              <animate attributeName="opacity" dur="9s" repeatCount="indefinite" values="1;1;0;0" keyTimes="0;.6;.65;1"/>
+              <use href="#p1a" class="s-line" marker-end="url(#ah1)"/>
+              <text dy="-7" class="s-tm" style="fill:var(--warm);font-weight:500"><textPath href="#p1a" startOffset="50%" text-anchor="middle">IP 203.0.113.10</textPath></text>
+            </g>
+            <!-- traffic to B -->
+            <g opacity="0">
+              <animate attributeName="opacity" dur="9s" repeatCount="indefinite" values="0;0;1;1" keyTimes="0;.6;.65;1"/>
+              <use href="#p1b" class="s-line" marker-end="url(#ah1)"/>
+              <text dy="-7" class="s-tm" style="fill:var(--warm);font-weight:500"><textPath href="#p1b" startOffset="50%" text-anchor="middle">IP 203.0.113.10</textPath></text>
+            </g>
+          </svg>
+        </div>
+        <figcaption><b>Figure 6.1</b> Active-passive fail-over. Only the active server handles traffic; when its heartbeat stops, the passive server takes over its IP address and resumes service.<a class="src" href="#s1">[1]</a> Animation: heartbeats while A is active; A goes down and the heartbeat is lost; B becomes active and takes over the IP (it shows the final state if your system reduces motion). The IP is from a documentation-only range.</figcaption>
+      </figure>
+
+      <h3 id="active-active">Active-active</h3>
+      <p>In <b>active-active</b>, both servers handle traffic and spread the load between them. Since either can be reached, something has to know both addresses:<a class="src" href="#s1">[1]</a></p>
+      <ul>
+        <li><b>Public-facing</b> servers: <b>DNS</b> must know the public IPs of both (DNS is Unit 7).</li>
+        <li><b>Internal-facing</b> servers: the <b>application logic</b> must know about both.</li>
+      </ul>
+      <p>Active-active fail-over is also called <b>master-master fail-over</b>.<a class="src" href="#s1">[1]</a> The same two modes come back for load balancers in Unit 9.</p>
+      <figure>
+        <div class="figwrap">
+          <svg viewBox="0 0 640 260" role="img" aria-labelledby="f2t">
+            <title id="f2t">Active-active fail-over. Step 1: clients look up app.example.com in DNS, which maps the name to two IPs, one per server. Step 2: client requests go directly to either IP, so both servers are active and share the load.</title>
+            <defs>
+              <marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="s-arrow"/></marker>
+              <path id="p2a" d="M130,128 L426,137"/>
+              <path id="p2b" d="M130,144 L426,212"/>
+            </defs>
+            <rect x="20" y="106" width="110" height="50" rx="10" class="s-box"/><text x="75" y="136" text-anchor="middle" class="s-tb">Clients</text>
+            <!-- DNS: name → IP mapping -->
+            <rect x="240" y="10" width="200" height="82" rx="10" class="s-warm"/>
+            <text x="340" y="30" text-anchor="middle" class="s-tb">DNS record</text>
+            <text x="340" y="50" text-anchor="middle" class="s-tm" style="fill:var(--ink)">app.example.com</text>
+            <text x="340" y="66" text-anchor="middle" class="s-tm" style="fill:var(--ink)">A  203.0.113.10</text>
+            <text x="340" y="82" text-anchor="middle" class="s-tm" style="fill:var(--ink)">A  203.0.113.11</text>
+            <!-- step 1: lookup (dashed, two-way) -->
+            <path d="M75,102 C75,52 150,51 234,51" class="s-dash" stroke="var(--warm)" marker-start="url(#ah2)" marker-end="url(#ah2)"/>
+            <text x="92" y="42" class="s-tm" style="fill:var(--warm);font-weight:600">① lookup → both IPs</text>
+            <!-- servers -->
+            <rect x="430" y="110" width="180" height="54" rx="10" class="s-acc"/><text x="520" y="133" text-anchor="middle" class="s-tb">Server A</text><text x="520" y="151" text-anchor="middle" class="s-ts">active · 203.0.113.10</text>
+            <rect x="430" y="186" width="180" height="54" rx="10" class="s-acc"/><text x="520" y="209" text-anchor="middle" class="s-tb">Server B</text><text x="520" y="227" text-anchor="middle" class="s-ts">active · 203.0.113.11</text>
+            <!-- step 2: requests (solid) -->
+            <use href="#p2a" class="s-line" marker-end="url(#ah2)"/>
+            <use href="#p2b" class="s-line" marker-end="url(#ah2)"/>
+            <text dy="-8" class="s-tm" style="fill:var(--accent);font-weight:600"><textPath href="#p2a" startOffset="50%" text-anchor="middle">② request to .10</textPath></text>
+            <text dy="-8" class="s-tm" style="fill:var(--accent);font-weight:600"><textPath href="#p2b" startOffset="50%" text-anchor="middle">② request to .11</textPath></text>
+            <g class="anim">
+              <circle r="5" class="s-dot"><animateMotion dur="2.4s" repeatCount="indefinite" path="M130,128 L426,137"/></circle>
+              <circle r="5" class="s-dot"><animateMotion dur="2.4s" begin="-1.2s" repeatCount="indefinite" path="M130,144 L426,212"/></circle>
+            </g>
+          </svg>
+        </div>
+        <figcaption><b>Figure 6.2</b> Active-active fail-over for a public-facing service: DNS knows both public IPs, and both servers manage traffic. The dashed line ① is the <i>name-to-IP lookup</i>; the solid lines ② (with moving dots) are the <i>requests</i>, which go straight to a server, not through DNS.<a class="src" href="#s1">[1]</a> If one fails, the other is already serving. For internal servers, the application logic holds the list instead. Hostname and IPs are illustrative.</figcaption>
+      </figure>
+      <div class="tablewrap">
+        <table>
+          <caption class="tcap"><b>Table 6.1</b> The two fail-over modes</caption>
+          <thead><tr><th></th><th>Active-passive</th><th>Active-active</th></tr></thead>
+          <tbody>
+            <tr><td><b>Who handles traffic</b></td><td>Only the active server</td><td>Both servers, sharing the load</td></tr>
+            <tr><td><b>On failure</b></td><td>Passive takes over the active’s IP after missed heartbeats</td><td>The remaining server keeps serving</td></tr>
+            <tr><td><b>Downtime set by</b></td><td>Hot vs cold standby</td><td>—</td></tr>
+            <tr><td><b>Who must know both servers</b></td><td>No one; the IP moves</td><td>DNS (public) or app logic (internal)</td></tr>
+            <tr><td><b>Also called</b></td><td>Master-slave fail-over</td><td>Master-master fail-over</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:.85rem;color:var(--muted)">All rows from the primer.<a class="src" href="#s1">[1]</a></p>
+
+      <h3 id="failback">Fail-back and other cases</h3>
+      <p>Bonér’s fail-over slides (diagrams credited to Michael Nygard) add two points the primer leaves out.<a class="src" href="#s3">[3]</a></p>
+      <ul>
+        <li><b>Fail-over is not always this simple.</b> The deck shows more involved set-ups than one active and one passive server.</li>
+        <li><b>Fail-back</b> is the reverse step: returning service to the original server once it has recovered.</li>
+      </ul>
+      <p>The deck also lists <b>network fail-over</b> as its own topic, as a heading without further detail.<a class="src" href="#s3">[3]</a></p>
+
+      <h3 id="failover-cons">Disadvantages of fail-over</h3>
+      <div class="prosCons">
+        <div class="con"><h4>Disadvantages</h4><ul>
+          <li>Adds more hardware and additional complexity.<a class="src" href="#s1">[1]</a></li>
+          <li>Data can be lost if the active system fails before newly written data is replicated to the passive.<a class="src" href="#s1">[1]</a></li>
+        </ul></div>
+      </div>
+      <div class="callout tip"><span class="label">Connection to Unit 5</span><p>The second point is the cost of <b>asynchronous</b> replication from Unit 5: the active server acknowledges a write before the copy reaches the standby. Barrett called this the “window of lost data” in a primary with hot failover.<a class="src" href="#s5">[5]</a> That is why fail-over needs replication behind it.</p></div>
+    </section>
+
+    <!-- ===================== 6.2 ===================== -->
+    <section id="replication">
+      <h2><span class="num">6.2</span>Replication</h2>
+      <p><b>Replication</b> keeps copies of the same data on more than one node. The availability section only names its two main forms, master-slave and master-master, and points to the Database section for details.<a class="src" href="#s1">[1]</a> That is where this part of the unit draws from.<a class="src" href="#s2">[2]</a></p>
+
+      <h3 id="push-pull">Push vs pull</h3>
+      <p>Bonér first separates replication by who moves the data:<a class="src" href="#s3">[3]</a></p>
+      <ul>
+        <li><b>Active replication</b> uses a <b>push</b> model: the node holding a change sends it out.</li>
+        <li><b>Passive replication</b> uses a <b>pull</b> model: when a node doesn’t have some data, it reads it from a peer and stores it locally. Bonér notes this works well with <b>timeout-based caches</b>.</li>
+      </ul>
+
+      <h3 id="master-slave">Master-slave replication</h3>
+      <p>The <b>master</b> serves reads and writes and replicates the writes to one or more <b>slaves</b>, which serve only reads. Slaves can also replicate to more slaves in a <b>tree-like</b> fashion (Bonér’s “tree replication”).<a class="src" href="#s2">[2]</a><a class="src" href="#s3">[3]</a></p>
+      <p>If the master goes offline, the system keeps working in <b>read-only mode</b> until a slave is <b>promoted</b> to master or a new master is provisioned.<a class="src" href="#s2">[2]</a> Slaves that serve only reads are often called <b>read replicas</b>.<a class="src" href="#s2">[2]</a></p>
+      <figure>
+        <img src="data:image/webp;base64,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" alt="Master-slave replication: one client sends reads and writes to the master; the master replicates to two slaves; two other clients send only reads to the slaves." loading="lazy" width="900" height="606">
+        <figcaption><b>Figure 6.3</b> Master-slave replication: writes go to the master, which replicates them to slaves that serve reads. Image from the primer,<a class="src" href="#s2">[2]</a> originally from Bonér’s deck.<a class="src" href="#s3">[3]</a></figcaption>
+      </figure>
+      <div class="prosCons">
+        <div class="con"><h4>Disadvantage</h4><ul>
+          <li>Additional logic is needed to promote a slave to a master.<a class="src" href="#s2">[2]</a></li>
+          <li>Plus the shared replication disadvantages below.</li>
+        </ul></div>
+      </div>
+
+      <h3 id="master-master">Master-master replication</h3>
+      <p>Both <b>masters</b> serve reads and writes and coordinate with each other on writes. If either goes down, the system keeps working with <b>both reads and writes</b>.<a class="src" href="#s2">[2]</a></p>
+      <figure>
+        <img src="data:image/webp;base64,UklGRvI3AABXRUJQVlA4IOY3AAAwfAGdASqEAxYCPmEwlUekIyuhIlLqCXAMCWlu8Z4DYQfFnCt5wBtiSN+bT2J/HX4QeR33X8nfQH8Y+f/u/99/aX+z+55/ldSL/Yehn8j+2f4f+4/t9/fvev/XflT6Z/Df+m/Lz/QfId+Q/y3/G/23/D/8n/EcgZtnmEe4v1r/qf4fx5f9b0i+vP/i9wT9a/+vyJFA7yYv7z/y/6P8wPhX+lf7X/ye47+vH/F/YYYJyC2T6uKNFpBLF6F9OQWyfVxRotIJYvQvpyC2T6uKNFpBLF6F9OQWyfVufubsdUFKjYrS47pH+RkKUG2utCct6RL2qwfw6sGwRKBMtaBnrmJsdY9ZT+MRIf0j/IyFKDcfbLE5BbJ9XFGi0gli9C+nIJdisYKRt3Ems6Sh75A6cE2rEiwdaZHFcq2p1I38gF4EzjGI1e0uM2Nut3cT5HPsKVwNaQkIfx4RW7xsmWVcbgr9Fepx1lz9NIzW+7g+wwr9NOUQX0BOQWyfVxRotIJYvQvpyC5TL4t6LoJ9XFGi0na2RZvlk/uTroFLF6F9OQWyfVxRotIJYva/IqFGhSqWJyC2T6uKNFpBdhwVpXEwrpKGTyLK+KG+V1m6zRHXwpXMXrUl1D/TU7nfJCVJ3Rww9Ua36RXQHrPcFxoqxPRV6CW+bJJ0WkEWoS3jk3nUoFNdumi7CDaP+4uuFUPzQYKJUVaZccEwycqKd2vSJL8zdYuzNP+V3D8o+tZWq3D9n25PDUyZf9mwpPSJbEcg73f1a/F4Qs7SAIFcn+wLbCKusVcNNogP2fierSGGmVDx2WASRYsImW6lPdT/YuYfNCutFWO7VpbayIcpy+PbyJQxcOcOs1Djds7tJVvjJZYy49C+p9r8qGcnMN1tTQHJJDsOeAc//vxDniOs1C8RNw5fXOHYalMYwOQhlvV2TPGoKcCZQjEedK3un/mnAH6obstIZ8dL8kZGCLJKc+xTrrnJc3xaMQ8kDO6A2LgFtR06lZ9aejNEvyhfy+tEqoDLSR3jPriUH6BdQ/gY0Z6FpPWH78/dLhPmZe75fHHMb4u6zVh5dqbaR94CxUd1n1ccG1LKK7WogE6uOLyeoCKarVrD8XXFD26Pv3nOS547KbxJEDohi1Pct82qUHLl03gAfPES5gF9ef/q+sHD/D4pkT/Qo1r1oj+QfJpd6/ui8LkByIbhGiN2WjMe2To6UQ5ZiB2UpNJvSoHeOlYGV7hUK8p19r4NPmGKJgfGntcY77LOtp9YfQYqnfWeShFCfFsASLdZ+PVCu1oi4b0/lHkY0/4oRWA1au/DlVG+5Bi+1hOeyIcGaodnJ3SmOs3BbrN1m6zdZus3WZiNqCcRCNSuMESW8VW12I/7QuWBpgl1Ad//UcX1zGphDWb4CH013NocdllBEQQ2oO8J8GHwtqcfrGVf/jvDLTHzobaZ2Ag+yObInILmAvpGNI1aSlcGwnBdw3QlAK2I+ZRPMyFwc4ROhIRi9C+nILZPruoz8sSDoDb6YiL39tvPsomqdiYObTT30P3EMyraYpugCTrVCF9Ongfc3APLXzqnCVwPvTR0fmKvQcstqQ3jE57NClkbc4o0WkEsXotLQfoIF3RhxCmMTFfIDzIkWCH9kZyKlicjtozQxfbYGVv8M7NtBMGcJnqy4/vPHj0DlRmH4I4LrwIIS41TQld1KhkT5Futk+rijRaQSysG2bI5AUfeeRKodCuPvpEFjlIQPNgaLnbpeeI986GJ5vq8eXFXBRScpUY9C+p5nmez+ZZul2O7MNVtO6vb/frxS0mwyy2LzIaObwgCa2T5t8SLN9OQWyfxD01RkdKlXEazbNgz57bhHzDjynljXOgfBHnCXJMQmShcdmvRHxZ3l8uQQyhIIzLBnEn7atuMV51uKYVVHHzZIGEJYM4kWb6cgtk/gxM9KlV/W1oj4sv/RhN/7+JNMf+F95gj7D+S01PNiw5TkrBG4G1nkkEsXoX05BbJ9XFGi1DDpYRSsGcSFh6FYsX0jWsByvpLv4qFiLNeX+pYFO0+cILhXDTJwCJzijRaQSxehfTkFsn1cU49adYvYucSLTh9bw5zqCnixaoFMx9rx/Cs+IUxXAT8+TlPXDwRSYXECX0XC52MhbbD+bA9Ds5zBMsED+cRIJJqXol6muUlCMO4dgTPSCXfXANj6DpUlfQKrijRaQSxehfTkFsn1cU5Cnv9hK6dKxOQXMjQzZTZBmKskFjH3zgtB+bjCC1bfNS/DXCUSjcMGd7k0cWQVifyNmwLhIrzLw10iq7HZ070U1pX+o6/VxRotIJYvQvpyC2T6uN/dVh3zEVicfkhHeZBvqje83jZUTKpvOEBZ0CSisTkFsn1cUaLSCWL0L6cjrruyHbaxeivcp1Ud9jqWn8pjqpgW1TEgli9FlvMYmMIhS/GIt9K+lfMwi1rLhSHxVlFk3rQKi0uavN0zg5/MQVacammOVrWBILmD3NWp4sWiF35siyajkucaPlBPq8XsPpSqx5r8mOMGXplU3nmWHzGf9injSzyCjmZuTFL1xGJOhkbc9tAsLFF2DZfKcLHPsceSNY/KM8R3H4WheOAxGBgBY2Hc51fwPDBpqnUMHJzqK6jXv/1itgTfROWTrPcAz9tSCRogFOxN1yQd2FYRHouz+2pJIEG/bb4SKoEYDh0/pVvRywFlrxifP0LRqKmSNpBMRCfU1Ge8q4xCAIeU27ge6McIV6j44MSgd4nuOhChifEd52MejtXUiO3Vd1bUBqFU8kb1NEk2njd7hutZd2kPE1cz+y4BrcnvYdG/QgXYwxZSwwn5S/ScLAdafxUIu6u7kPZhCKC3igFN+FAwRR8wBaNIlYVXesxs1YcDRnZXrezU/ax2ivaCPil8H77A6keykdiLtn1X2a/GPtKz6uOCX7xneRcNKB18ZMU5D1AXM49t7vtIMSTT7i/v7ncJFd32I3qak/WM9hvjyHBNVrzs/MRZ/PVrpgMTgbE23FKtGEzCZhMvejTs3PRvXHyl+rSe7SQR/Tfwc2VmKkk/HWVwp1tZSKKrbo5W2ihhhv3GUaTJfY7ogZoyi67nO34HTn1+X2O6LO/ypAcB32ROQXKl/Zm9FSTTlexh4eUXCABv8b92x0AZ/TWS99ckUNQc3iVxEILe6zg1/Kyz4OwzzlbuziLtvgOglecJJX0r6V9K8t5IIvpc96HaSN16drFpzZdTQzki0SkrkN9zf0INucTq8ugpr0ilUKmdxmofK0mzWznJRZYIyaqRsTctS+QU8jaRmcAtk/jQnrEEl8hxFlrmQMLII+uJ8sX6pXy8PsiUPOl5ziRZvpyC5URjHcVDKYTvCOuTlTU+aOCvwhOksUaLy4j89e4buaMKcI/3bux6MMOBEHiPZxWLi/pQ8nOZYQPzFNVkgpP/TkFsn1cUcKk7SiEFx5XAM498LZZgVzbqHDYXJ5sZddJNrPq438qohhx6AHR2fWFQJcup+7PaAxrrmv3NYrzc0uaN5C6yexye02SQW2tte8MwVxJyRXFGi0gli9FpSVujbRaRYFgzguE6i+rL5umhMJmEy+kxAOzoq7yD7TSG3dwlijReS9pjuvPKfu6rN6h0ZfVkfbv81lx3zo0Mif6+gBViN8AWyfVxRotIJiO2tYom4jr5s3PGQLsuHoBw6zcBi4IuQ2N4iUwAT9ehfU+rI3O9i5x0fwf1s7UKq4o0WkEsXoX1QIifKxCRMYuOiHVHeOIMGzln1cUcLHKNdnAkEsXoX05BbJ9XFGi0glU5/S3jGIVwkt3tbyDxrZJLq6Hypj2vvuQaforCLmMW64tdNPpLZ7PUPgD12MvFeO4BI3masy8fNpdSigwOY2J44lSECqw5W35g0WkEsXoX05BbJ9XFGixVNAjaEXjWxcSGlUpiGFe38R1T6y8hgLTa4+B89KIlfpfhOw+vOWOnJH4U3cm+Pg9KJuWw0nedFP9gnf3rILMp5NegAezRx1KfA8wCjPx69WyUWkEsXoX05BbJ9XFGi0gli9C+nILZPq4o0WkEsXoX05BbJ9XFGi0gli9C+nILZPq4o0WkEsXoX04EAD+/00AAAAiyUnDF1ui3FNzgIuOkPb44ca1KgwoFxWog/qJj763XWt+c1CZoZGRvLUUktPFxIVU+2FgZ4i9bgRaqzoiZ7VJkF2eT/pn6aGFEvzgJMAY0BktjbmcbkjjblwRORxXEkyY1KNCfMXKC1U47AwFdDCLusrsnLsjucGCNZYwdVvPGC4O20bNuMQ7UEcH1izbP5ixQiwPVIJaH0ZDFiogJROQOfif78jkR5tOrbfK9tTXOlSNJ0CVQtLv3z+7cx+LrOH+TVE+iJ1HFMb2hHEOO72bfPKdXoUeB7Bh7aZ/hn7cU6OBfVOrfYZfqdaH7B3sNN0I3Zx21tJIKAgu4MA90d8DVMzdzO82QUm0NDNFoopoVKmsvY2bWDImXa2z3f4VJdBm87yRJElbqqFf09bN3elYNmeLoEElPPxs7fCkF2JsAyj2FGPclr5I1/YFRSfNeZVYCXDXk/6orxfHraiCfFlYdFr37CXIqsEitwHDCqmuTGV6hvnYdCjnoMArvNY58c+A/34R/Lw7wMu9ASCQs6U4NkY+v5kgB5EbevJIqqkG+sIg/31qZE3DOR36bJ2OJcym4w7SCXWPEo7/tLGnfOZKss4bhczwv0af/VhBWjQQsKrM1rHMnOim6wtADnD6S0iId4DwkzMLb+XG3EhkYp6qijHv7p07P9eh7Oj2S0KSepdNWLDhBwPRvt8gF6lZTwOFP3OtToYfLEzrAmVa91gzOS1I0ZadO4FIO1OeCbV8y5IkwGG7kwOrkilR+hjIlUJgU7cixrhHEgGnMwz8x+tjgDUkdHSf6NXYH6cjXHxCXzuke86FRVBkveDAXhk+ottfCUUmW818kXhwBqSKxEUlpzGwNx9LU7rxl8yyBxjkpASyiSlwdWNHxV+6UAnNAaRswK2e86HGqgMmiXX+3NzjfgGaNdC0fFnwpWSGD9BHoo4J2W3Zv8MDQBjTrGQ7lx3q9oIF5IgwdbPw8yxi6ohcBUPtjRy0mEmu2qYejqy4Sf+h6WcHHGpTK1iIKBtVUcj0xLWV7gBsdp7X/b1jGs8XHXwil73IcC71esnO9W1psL1+QCA5964W2AqWloxo9szXvEQrjCtcHo+z5lDG8qR3nbIHsAqMUEOjVPX2p4n4DKGtB6sI1Ml8OWOvqXmH661fJ332xNmQLClG6WSth2OqCOCRinhS+JgZoWjNXpJwY57WsFHBSTMiGbXDQfXxTYR/0LLZojFHjzcd3cls9PN8dIYqn8XPI5s/ncu/LylkoDeegvQEruHJ7Wfd2fEjfIxZWz+FirgVkO3hHSYF6+r2HJWvkqdI44SS5MbqlRML57M0bbifjDR8/B2e+MQkNRttjOdGdmwuO05C6tRyxw01wrK1z0whJnvAz2cPbXkUsSI2SJND9Efu/CJigq5ZstSWiCkZpuVRZignbaa9CWd+ApSjlgTSPQIEwzLRsCl9k+qEOhXNCL7vgqlh6C5zdl2HNHc0BzFDRKdi/lXcpjjfeWhmDrdJXz6bhRbMKrOwfmx80otkLtBUiAPNsf+GghM8lyrSoFo9/dSQqmIirmP2BWajiyWu8szV8AtePr0DhRD2U+9E7M+WW+5WL5Ui2Bt2Al0Z/tAcq+Lg5CUi9n1Qw9/Scmt0+yc2EXe2eOQ3mGdm4UdAkdMCOwgELuKxYwrsQ7r8SmVYbF8bPcopVdeJC5N/IDPaoY+LSlkOcxzl1jPAO0OB97a8qnuXuZcL3Un7ye122xYB6QzA0obek257BLvJW0M/lLRaPlimz3m2CEM4ia681y+8Oqy/oDIrz45VeXz2WYKZM++r7wyye3SQdH/zVyv6vyaPFgvai6lQmqGyGJ0mdMdv7nVX9yNtPpZHikyKIIWWN4NdCUKGItXPQTdcMCvx7X93WZ2i5F2stSt2K16gpUVPHam3DFpWHUeTnkUg9Lc0KAsIy7+X6+RXpAcmslgicslsmPP9YvnovA/kGHEM2j92zbzKFEzD0EfjOAY8RTb73jBlkymXMCVK3CFZWsV5+5/U4INm9+iLxKvu77kJl+DdsUWnvxidynm+6G6nqoP1/Ek5+2uzt3DsR4Go2p2daoyM8nD2u7tf8F7N+vbcaJ+PsjJ/0skKGw48kjJdrRaOgYhTNodV+uMSVv4OF4Sf57Ak2pmMgR7kHGtnHOaO/YT5PsmByPAy6TOAGW6sSlInQ+6j+AXVzDOtTIYkp3ghYVsINKbZh7pv1Q/Z+npBv1ehmLQEvknSgbpwE/sc7l5pJvU2GnZ+/LSv2Mcenu1EBvmMb6xl5S9R5f3VrXv81rZfLaK/7S4IxFyfblbnGLV16k6WKba5HZm8r9RHd7ZMYsQalF+ZzpjE1BTGVM1vX3YVcOl0hQu45DfEjHNt3C1SmXwDQDtIMyAfCqELyU+bG2qPD+lUlnH2mX8fs6F05Sk+lEd/xtICGuFm1nwPcWCrZNoKGe3eUxiVvv2PefAps38x5r8kQQ7E/iqNy+PxL4PcOKFcJhNX4EMGOP9diHqkZSB5v/uPe4/19urMTkH3+9JvZHVqwxI5HTd+3/+Zm6wt/PyE1UzhGvPMwTW5B7YaSsk45O5pgzk36fzNYLG449z05NJugKfTk/WNC+hvrWn4lWG3KMNLNhudd9PIJfxu535GqI6xzx3c5WTxTm7rKWds1WUT/GrqSe5yYUKOXmHCYvyW+INUA+SLue1QHUB0bNRMu8Yqt1AAokN61xSO8yVvCJ9v2GN7unijt5Y1M5mIxGCU7OS5l1P9bS1mha9zTS7/n0eIcHwqZItw5J9k6Z/DjUj4zC7fGmpq8v4tUjiWXp62afciRLwTGF7rp+wkSnVdqnvU90uv5VPzk3owp5wZAM6U5Q7GQ7Suzz3GGa9WMjU6pemkUXHBOeQ9JZihqtE6CD65RvimVzgoqYn3mxrNFJCCgrIrKSSvYzuxw+qEfL9c1Qt0RgxrOEAmQEANSmInAVjqZT5g4NpddUiec/k4LqsbIW0GmKanMa23Ii6ma6Fcy76bwdxHvdpu/1McZxvmKAd834F1uVIUT6y1oVTAh3oPHwNtyzvPBI50/t0G5Ogs45DNffKtqaX4wgaoDfwzSLvnrur/gavoZddI26DvDyqQf0L3qECkAWvNCSPq71sfNmv7wImiiM1yWYorpsSiOtAn/h8pNEYL+ESY/g4Fhen2HcySq/9L9AL6fC3yE7XIhfKuYDleFI2KEals3Os48mJRp7UGOLYgu07kYsDS1nNX4MtboYMdlIKYq8PObqJbykmEoG2zPxoQleLBqcRtcDUWnP4U9qy16zVZDuD7V1/D6ebxCK/9/onJ2DmD1KnfHKEB8tKtUn+aNZxZgY5aC6bILdhqnTOrc9UZJ6I2sPeYIzNRWXxiIWURO9dLDVCvY+GI4DWL7W1cGQ2eEzM3cCNdj/DfllkTdEWOGSxcKLjQuQlvyq7cI2Xg4jzqcLeKxVHulP1fHsPT7cBPQFTBWbSsDvx7xjbkh4BbSlD+1fMsZkfGrBhvam7fIrtc0en6Pn09HJUqXXlE+pQOTeZCgtW21xFFnUOQl/ydCCQwCBc2HYELwkT9BUkxLkTdH4uY715IWjFZMBX2km2CTlGcYHvlzfEpeHNJmLc8OMk0l4hKp0P74HdaU10CAGFxA2vNvev2bTu2zzOZxNPFKhKDICRwsPbQFhaPBOjZBvLN+mI0BHyWihFEt+XfO4rTxCp7y9SgBoryj+lzORd3/dOG6B7q5Yt4WdcEupx6sbHudD8q+J8loerogEAikWTZnFLr4eAFzTP9cDEqcrIaOe5gx5H/TqPMPSEgN7KhTImqW6VUDJnmtRXRwbT1gUbD+Imu5m9pXeaqNq1uAsOzG14Tf9fdyGLfUerTc8sTS7e2LAmRmUMOEX03tHeBCkJVNvmwD4Kl0k4jgwbe6a2gDOqlJBv+wssYCJjRu8XY0NliRXhw8AYF79plJ1JFXNxC7Lzm3PYC3oVEV/DFsipoNIgWq4AipPZRmi0M4nbVv4iCKHCaxrjm/7b+vznjxdrkbYy+DKYIirxcsOUv8nqJb4C1OLjRxbLrE3U/xcsYhAvrG6NDcG4Soh9hJU9nM5OecwCxHFXzXfFWw17OHXqrvgrUhJPwDMUUig6bnJy6cuU8Ua3lybdC8m/RZeXe8dhjpvB09NM5KWk/LOoIOmhsuMS7ncUhnOOp3Pd+r7TTr4Hazraxmxh4LfX6zYaH7+EC+8qjnxZmr4BbTPvWwbQHg3bm1V3Su0x/92wYdk4bfaCnUg8L0Hil+FVphcv4k02BBkvLhj3R1pZ8YkcslAp+qjpRd+z7gdOGmXC2Gvmib4/vr7NqLcxGKN6jyB3IZU8/8xFEHMT/FsKnIYRfcjlY4KnSv3WTXFjRf/+rtXLtAtJ+fTWv7x3aZnlAh0r18iPCBp61la0IINMZDs0N211X2vKSxl6r9xK7esUu8rpKxZXL9GC1Ywwik76BxfkQ0rHJtjvQn+XOtcJ63ZalaUS13v79jh2iWbkVHh5zXxl8AVACyXEnDXDulht0ikP1b9/65Hgfevhdsee3OVdiUC0YmEHO4K9RmPUYbe5XViTnCtMSbwd1kNQf29O6I3y+l5UqicEA0+gNfOoeN+zb7mAcqg+DRYaLOk21PjFfkWLg3T0MtNJVdNY3+JO9qS0ugRD1GhErUwccTP3BLXsya8Kk31Y+WlJx9xHNCN5lFPIRCK3apbhdtMs31iXl3QFVGVxOqjeY4PQ2oPwgk70PTJOnZOUKoyjHmHwjifTnqMGGuD4M3KU0sULIFoNJ/OLkAbb+BMwR9Z++tziJaj+LFT11ynGAC+tfLj+LmuH36IClOQEcl6VpvdDiQB+C87Ra8jHfQVauCSvoU/Rq3pgOqyZJdj1B8ODfalsM/hg7ok/M5+ZknzBk6yNNrVnuoox6gEbSvirszfffauUw9xoLskOqNqEw8ib8TGLjZdDtnn2ulqcE+p87yR0PTjbYrI3fg39iaBpy65o55l1ebXolXNs6DDiNtwOA0GIXiMM6cyVBfVzpOKdkYYtM19MdIqro32kHABikYmAuWf4v/6WEPrersIdbnRwJA3mnesnUybq3w+vRhaHTzfDxF5rxWZ0abLwik82SLj46y3F3bkCPmovghNz9K4TLV+PkNZ9HJx3DDKpAxEL/UfTeyiawTuBPjJhl6fE9H6YIw2PanSASn32NqeSlZcLXCe+M85aRId0tO156gykwMpqsRosxzB4Czy3kYGd0ccLWPOtb4uhaH5xE3QONFeuGExoVcBmk4fXh7Q5Z1tr1M4bQ+GL1znCyH7UCrUDF6Fm9MoLVeHynyvLUxnk1XAYIakR84oIgCu/7LmOxAYm+PzQiU8GT8kVb+H7AunvzV1cwqZw6OA4UVtN9PQcCOtFTq9N+iL3WyPbGe9lKQ4vi/YBtJtYiM9++2raQ9Oun7DyEPkFxQlEKB9f6BKntqhh5C6ek64v59xD7YJzSeSQwxgYGK37fwNv9XjNg7PMsQ8D/fXwqwptaQDBh3I5dbdDy94Fsfx6dML5UjBigchrInZejxGa+da1KNdmKgHdDA+AG9OyuyC644+Koc9V2SriqA7T1FGBCTHACq5Jz1f4N+hluM0IToYiQqg9iSSIX1O/eyATQkKFhLf45jM7Y0OP1s2EER3R47VSR6YDwF7MDM3GJgl7ENZquCtrV4DGgok2orrOfKTusqxo9o/zDgfyVVpv4NaY4uppMtPJIJNWlf86TgkCIMms1N/18BIupUqb7eOYOTRqYr1T7r5Dlj4xCXOLhwP5zLjY6ji5SZGTBl+h/xWVRWsNpFVa1XPG0LHNhPAA9xDKviey3iaEutstyubMRERFlpKf2hB1p69iGnkFU3km3VBSR1z0EmB5YynnzfcXVTGxRtN6OrJe3fINAppdQzCcExfNa540niM8hltG7NWxTsXpfAYer2YcGFklHF/gzTDqitzHWtHpaoJjZ4cwFyQu7KrFp64ihFzTHLWEr+Oa5sX0nGf1idcyQMq1JmTN41pGvkXJxAJXYwqxWxNG3JWkEoigVMFQ/eUw2TlpAAsGpi2zA7VqVwhdSIxA86B3YpYBrXzlxFEqBiLbLm0lcv/6t17PQTeZII1OMGfC7w/FlLIepmUvvAEEsRQ8nWtfolKVoOsii/5tTUrAy9boCaagiT27f3gL/YnNF36F7yPCWx8anKauCA16p0G4gptnIu6fqHS/vo4gMfefcnS1Mqby85MKy5IITo+KBTZYeQk03dcoPIHxhUcIVkBuIW01eHDf2IeqnUjFYzqOc6Jo/JnNx+z5KCfHFcOi0e0cD5dcIuB5sBur237+mQV0ndi+93zUIWGKFobEwXCnE3iOAh/HtEQFJ7R0v6z11FOQ8mdIIwgcFSH4HzhYQgbA7VdBmciuM7IcAGYaZbSRFIqyJ96v2Cm78q7JDiq5h8vGY/KLokZmYqx0h1VoJfEni2j1izKT5RnaxK4igXnx5AYOIbz9FnCQPT0QHGLtPJYhRjQRBc9L5svMaAmE8cgoboqKXGc7QAY8nFP3JnjNeTafla+ChlYw/u4EPWe3vgDbulfzMOdov+fY2EDSkuN9DQQ6YzSsMfsX0m6BLPD7JOj8MMhqDkS4YpclWDLU3hPUAmSKG40AB6xpL4SsilARt16wS7s0AqlVXZMDH3PQqilMAwFFzwragOggJ5EocwRhQRMXTq2GXIWAO2bgG6bzGyWXoJl9OlCnGv8gfh0lOz4VbqTIvN4+mV8+LIhpQTLl+RaHv8cz3l0tgXwve3gEA2oY0PAiAPl9tEogqKUjV1lJmUxuupeEk5+7f/lPEEK5UV3znWqPvn2udjH5++JxATz/TvhRqV2QiloLVFAv6PG0B+ggnvUcc3JuTUKr+E06oRe7o5C1WIn85/atxXaA7kKEVD8UxW805MAZkk7xQtAV7FkAstZ+907g8aL60GMkqdsnt7fmM00tB4tXeVBIw+W+Be8+yg6YU+eaupZhnpWqBLUJRANjabGa9mJ/IDUL3gk018uSGeP9J+CSmigNa0dEEr5ncOXF2Muh9UY3gWcF++tAJYZbNblxHlMPaA+upBleA4F/FM+THbMzxrtJkim40xbK/cos/mF5iH1/sm8XhSYsi18BJcaM/DHOEk/v+gW5fBPUfA5Z4fo1bgzBD3+FxuQmTq9MBwN5enuEPTbhBvCvSBeBS9zE8IRIis5aWWiVi+lgEl7TQvuB4j2t8IB65xOCoQj1wOsWJFZOqI2GsCWchkLQIrhU9/cBWpKFpQ1IHZYLQl/qvvMRTJNxyrRd5dcN4l7KxiXPfSu/AMRUAnYF4Yhjb0gUbiUEqGg7es+CparHM1XpNoQNyWKGr3A54G7/1+J77QddLrIZWsAjeEeblFCZSmDd6nC8L1TpaWFOzJxDWqbPj70HvBxVpRPqj2p68IiV/39LQJ3t46CuapDKznNrp+GdlK5hvdCi19SpaTFdaDAggW+g3Gf/19Y1TAuaHlMvTQCfnK5aWLynDeJA/paMKGRXpj7tvx6G60GEom/m9DTmj4/Sh3KOkMkW++xTTygf07q08atp7xZqUd7NDqhLtpY9iVqKcWiXu7asbBChIH6aQwJIEfra2QYb6m4H6NdhX3YFh1FMMO7l8DRFqV20EFQ8W/WcbD7//TyU/FKkmBUp+BDvbfYGqnzqw96O5snXAGCKki+bYWom72tCvZUSgPJD/wpeMvk7iy4Tg5kNI3LOvPdv4L4LwWck0/FOMoNUWDAA021/dve27rls5ZK0CATd6q/w5p39QEq35MdvY4xw8AxqQa92hOEjEN/PoStMRsgX1LEbfgCp51zCjbzx8RYNLXgOackjCiieKWX/5/pHudf5xA9mGselwXGhYVgky64REUh9orudQdz/XJM3Iww7ZowRqjIs3XhV435VkqQMsLCnVGiL+x/3nqMH/HSS+SrAdK/0VYRhTzbKGG49xlAToboEalbYFSnki1dfvc8dnhk5zMEcl8FuBQtZnKgAvyfVmDH1v/6dprZB5LgpgD3b4lMB7fOzv7VubcqeG0WrcsIuFs0X5CRTCWW+CAvO2Gyp3WqKGV0IdnP+LlG9UQdzAgx74fxRmBVBuYzFKd/IS+8J7TrbKhCRZ9kvdvuSDZAPpI/1jDDxXW7AL4tmlOu52GmJ5MNUuJzzwuQxwtq/soTzUFkWgxGojU//+YhU+mhmURSF+NbeI/KibgsKCBFR9iIQ4bxX5sISUxHtn6miQ9WJ23ZcXiAjn/KvMueg9c5t7V5aFIp+grNR0M5fINnClG99X+z7fjskN5Ox64RrZId97HOCsA1Ss8Uxt7rO7q+jgHecGdCPpMg22Rz/rXgKwPuvhRoAcAvBtomjPwXt+71eyVK6Rjg7zn2K6KJv9NiDuYxfTXvR6yzAF+Q42CCV83UYEyNEYpAcSweFF52AdyXE6bl/zl4A7CDv/CilJ8ncWfRpyaNIL6a4Znp90wAnd8oOwMJa2Z6IpS8nIwPT1TmF3vIzQi8qcfGJ+SNUWW4UZXG+qPxZHGNMryUt/R8vySZGKwhriDqbaRdIbDWJOOjZxrhNRuH9nwNZuf9YIHmGAsLMuc3kYeXpC5NEJcQwdJzYR9nxdnptr1RrpsLBncOuQbZlyigWq2Zlzb9nFMCCuIHCpxmcqEmawhPOOUXo3NenD4gMcJvKvKjBz8e/lHbEBMF8UeMNbBGBBQLta+TPGad6IcNaBbHijolUcLBtdd31kWOEkMb67cW6qTd1BGBwuJ0q4vLYHU7LyxyjSrVRl6tREMwX0iJicaqfTLFjM7VxLshl3EkcArPFpnfoIPllbQ+emzFoknsu8FbjLqiMLYEh+stY++ObLKZFa3QEFmgN0pMhoKHdx/rjYe76qt1j5OfMCFGTUf9MtacQi06+h5Vl+NbQ/wZSkvZ1QRo1cokHZyabg/w1peUCwuAXZG5rYd13buAoBRsH8PxNlvfdF1HHwT2B19JKFlgM5Q0SM4q8JxANzr/7RNRFB6MUeJn0zXC8dnEtkBNeQ3atf4AiqZ2ZJ5yxi6G5wxbAxSIJuOskZU+ElC6jxwZaPSDLob4Wzy96u+Ka6XdIqp6MU++NjvxiZSsZBqoaz5+5yyj6SX1W+7w2TzRNojuZqIPSRQlwS7SJrqkkajvX0mj41ZCQ+Vcr8u3k+GuM0NnJ7HImJCKpWD8/GaMGfQ7u5FbaMTgupkJjV8fuyQBcx0006pYsdwVdKlFMRjWROk2WV+pm87plOcPgYz9I40gdvsvMuNkdy9LR0R0DIZF2OiSJ8i+iWo09q43g6o+qclcxo/Njj7yZmRuuXqbptLXECbFe0AKhK8Xg9N0A6LC/pkDarHoD4Xl7r6MOWE01HqkJd5n6MFiwUBQhXdeIXmu7QKp30lLU8M6/4fLerd1BYv+hJ0lx1XtLsHyQqsnsb37cP8/Sp5O8deCTz8nTSnL/ajNCrIqaPsu2Md5fCQ3mMPf4vxLiog2Ki97uHjsgyKB+h4s9a+qaYJaBxQeONuj9GrSqk8MgPH8z6YUcuRIcZvHwfJkndItLuyozI+cZM3kC93jrqWVCSKNbO2RfR6UXb9PG1yWbdlr3gE/fwgxSlTdXhU9/gf8j3j+is6wpPv5pP5tzkIbv5PClsytWbizZRESxz3UWM2P6Ucr4sMfbU6r3OsS6xZZaW00405pzduqgzpD8JChTwwlp5JVTF476fvV2QNQr4bx/iBG09EvA/l815/gNMniNb02Ba0GNj0Nr/luRegB+mWKjq9vXm0yRff7gEFQkKA/s5KTU+l9qqfiRw8pzfDSgFo88xi8OhbRKn3ME3RgVRUsy+VGucYdHtd0kwp3fU5hueIn0xOnBeLjVl8frEOxYcqSkcyX14BrZ9HH5bGGWsJDQKhJwtk2KZKIC9Vx4C7cHKZJbxcVpxN8xvZxIVTXTPppDmxZ1//RCFinzMUZ+bY39DIzQMvCVI91t4EI3479HiUXHA0po7f9esA+H1Diyde09dkPfhXR/3oIeL/+KhwfhrdiHapZlotZjUzcq6cbW58mgLp4Nv7zb2qdmdIhgQ8TW02FN5puMZcalwnHlDUtDXL2BxPi+CRTPADHM6kYcwqNgv4TrJGX3ezjiqDp425dYnyiQmGWBenSQ4Pf49lP8XL7JuoCdM0U4ix+vmQmW9LuiFLTxcTzhnyNFMds0f7cljvyoUrIqSGBj3i+Zh3tRqkLJtsACHsvSoUsd4sXJ2kxA20A4avzy3O1Ouz7la5TDNJ2bO35WmTJwZ0MCoGESEhKi7hFpqCRbFpjXVNLzksFyh/ysy9oSo7jwGZAVIODCJ5FH7o8ivm8ZELKfLi2Kf7Y0Gp5EBFEn/kbiwNXsCwSozNQFvYNujyARi3+c82m5L3lJPyvCTJFadWN12vEchGtVPZtebcIhhtgRMDFSpsp9ro7++nN9NixLZ4aqO+HuTs0NAWRB0b3G2gzFYj8AayfdrVjbxNC4ltHy616FEl6uQS0nbfRfT3VIzXbCiYuMub1EpMtIxth1kHtV0EgTm3AEzU+0F4+VP3bwr+0rc4C/bcXBSZN96HnYP2qhNQqLMBq653KW9r2swEUTepe/1rxtcFTGqAO5TfJUpYsVRwnsnjYptlpmNna+pXc+KltUhsArxqrzz0MFs/zS6rh4YQpVIqztZWR/mg63jiIGjME3mPdSg+afxckc9BCe1QfYC0l69zSSmYl0DuD8WylbD9ssWzXtMPlcKq/xxajURPip4erGMOXqUJI1CriBA/Ai/bWKyERU0E+yENyx8fDrm4/Yd5opDAbCQihrcozVjDT50PrzRPXTjbrRGw+khEsRu+6MXWnw4t8jg6pPxP4MtC5TWVXqkMU3MziIFi+iTqdrotTtDsnfu3Z4FQIf3MHxeiM41NCkb6egpF3lOBwajq8jNJD6oIYDFGYGIsv71SlVFL7nGCRFWjCwtIzQ9z0Y3+BP1+6+mc1erFo+skC6xwNMne/q6ArGTOsrG+ksjOMN72H9/HstUKmwaxtS+i/BvKb6h1z+hSS+OaGdhqIcuqRrVrdHDNXWYb3Shuki6T34tSsuJTAVGK7vGxSpjT19kDrnDwsRVkNj8jngPtzAkLEGZZ3ogjO5wE99CUTXydEI6tig1V1bb3SHYtAFaU9WfV3cVJRyfti2oXdq4hdXPqM05LwQ7q2XdAiCyNaaHFpvZISSXdKzml3uWJrSOHbR2Qy8u8JS9wtjBoIfYo8Gn2uhKAbtLxg1uvwYYsvOP62LsqFepnz0xjHKfJohaUgvnJaEiRl+0ZZnbI/8fBdkkNLKiWRgWbNCxtbQEYk+4wKj9644Q9fKTjRcWBZOtaOdaHYmJyvvWL+dvbhcFqgdpD5h/gnCIw3Op6b8HblxhmQTXdKNIY9U61i1yaX0pI8NBQvV2EqFjVFVGOA2b+Ab0n87rswEAWkZfKDXXb5fNYe5eCvCfCqsyzWkYgxvkJXRym3R5a/N3KNOpC+IooVbZeecmvzZp9paEhJHQqJbzVTpHQYzd04FVTmoH8Ynqyxep3klLFZo3EMKoGjItRBTEh5XnacCyEt9OcFkcqcPtvbE/JwNR1wY4A6NLjfw4K0JVzGZLaVYt5QVzxZ5NxlP36UX9Ai8RHAkUQlRbVxzBJD1hWZEj9fcDWRFqhRXEx2vFNaNvnDa92wyEsDqCUwEtGm+FBI2IC7vjxGZGVM6QFwmwgA2t4AKvHo5npxroAkXnGEtm64uUckY2wA4fjS/gzAyNdtrEnvlRNpvW5wpPcR3A3eFj4iHI1u0VADeINO+YK7LQIEjiYOWwxfAo3B7xdWWD4WzrL+mGVZ7iHT9TLN5IAYlcZf+P6rWLLZo8jKUn4rgwmS/XLZK+09fLA0LKJD3n2P9Npl4gV+rRQkK5Prbp/R9IOHjmnbJlQhuvjIDEWxUIOFZrCIt6dLalf2u/ZfO/O4dJBkAGAHuN6IJZRTeCJ92Yz+uqVLO0vHas0oVd8Kh12QKkOTbops8sKg1+t5JS1liXlkPpjoZSUsc10aDA2QwBb5qEs8J3G2KRiADuoSTIZ48SnYuP+jT5wdJpxZA3kvi8YWW5YwFTUBWCcIydJ1uPQ43AFJfVVGZSrEX7a1122rRwt4mmkl2yOT9zoguVHfjzeyjAxCnAfjnwBf37epxZAV4ZSR6CQtvIOJww2O2TsL1U9T95CIJomVC7n6u1ujWq5qNe/URzUbtBcGXTVaWX0C6bshpyY2ISYxtIVs98Px/ckXyGhQPb38mmWm4Sp40cNlmf8aKlalAwV4R594cdTTZU3aOgTkkv3p+31QlmkXCLaVMs3e+BtIf7xV76+OV2pHAzsJFkBGsSqijpAGBNfZhTw2g+Vn3GXMwtkcQMtRydjXfADplvPEWA5CHPUW+PBHw/uLm+5PvWzdjem7InoQQjCHPwD3++OWQl5aa7i8n6REp3ih5gJ0Sr60JmytEmualgBwyi/rrt0/n69JBzmTgNFIeSPodAPz5sEvw47kY76ux8BwK4HhdqldKZuzYBazdBUP3Es60q4shSrVV3JR3mjxOPXy4yJTcNX1EwCW8V50/OB1iFunIbJPSQWtgm71dYbi2kP/RznuK9XFNsoujd0jOeRrHWKHhXE8rC+y4U7wPbjTADlFDakF75nIcAqku+U+a4sOA1Qyt9WEZ1Z64JIWaR9OO6k+XU4sIFNE7xwq4vOTdoRlt1PU9gAG3qeXDPW8WIk2fsu7wcjXjcPXXuSTQVaGcSHXOOBPzQdCRjvXOMSdWPOa5c4RP9r/wDT8xAqag8j+x+OqmdEbOpqR1++pqGmy5qT/0SH9tegImx2h0T7dGOSwoRy+rR3wctuYt/hJW17I3MJ098XC55Z76bDGwRtpFulkhUKoNrH/26Ej5CquHF655HvDPWfnrzByShlZrEPYcf1rMna12UJ3yUEVAn53G5QEu+3JUpYB3OP+ABaz7fquQrqzqk05YuiwHl0jgg/lJkkEVhT/lqQzhlQgp63BqaHC+JsfOdlaC5Q7SnUHTr+TQasBMhvL0KGDitcJAdQLxG0yXc2cuODFJiVrk2qV5HJKAd+2SZEuz8oyPQIGJIl3iA3ISgusTdrqHd3u09AL28phgMxOsOlM67tj76gS9pKdjXjC4H8Uz5baoYfXzZhiOd0N+sZop31okCrd/DdBuVcBLCieoS6YhDiMud0TkRkZLTiOA8Gnh5UBfZxAcyGApEEwTYjraueAghHuj30tK2AsZA+kM4uEVeBKzkgSY9exRsfqYfpHqeMtRoofvArxWYVIBi9Mhrgnrsvlb4wVqcvbsbXoqwvpHLRtLUMF2JojCtmAG0rHQQz4ySfi/12w/UKXXEIGlFNcOZqJJGYRL/BxIPyPjMKZSc5cWZwWrg0lxQtQ0Jl/e7A6XSdwiYNveAQEwkewgORutG03ytMcYOZMwIW3vMyrC+gJP7NIEtIH4u7a0y2GQ3mQyVsPpxxDNIL8rOGO64usevZ6LE/vQOTPPIjzMT0Al5dRRXZVgEeb8xVFOWXusmI4JfrThpnAWtENxiVLuPfNEr8Ue5LgUW28KfLC/NhZ8nYq0Q9T+n+0CjXmRDWYi9VRm7SvhYEm8+CF9+kWrcaZWYzrBAa82oaIfI47yd1FWmMlN8EvAskDwMRKHj+/aee0kd9mU4xy0OxJWYSf1eepjygBrbnEwudw4ME8i+2BrItewUbUrG0u3CN6nhSG/kPm6aB6ZvrrtNdQaK0OdIo2dNFZ6OwDUJkABnoEr/LIcnDJ6icgjEfqLUmfeVeo1mH9b/csLI4h02tArQO0m59FG5qYptL0jdoAOLC05K+sovJXoyQ+SKpSLI1/xzhR2p4YwzykGZgTHl5h4zQsLK2XcUySPaUnx8RcWTZOXzkK1UGavuaDPIBS4Qiy0cz6bvGD6uWO4QLsMVq4JOD11b0LxwKYxvk/LU9j+t2DLoron0cs5XYMHxxrM8B6p67pCDWZbmy+uB6qcZPdPQwsOvtjVCzIW6pHi0JiXr/txSM1nCs6DWqIuOn2FJyBTJkxsMiyXeFc1wCc8iij0TuZrOfQbLoRSrZoswzSvWx27iJd1LnhwiqHkKxaHiiptOZ5ZH1ffnWindg8F4pg5toiyAdDrOMYu79/aiFDFJpA0A5lVfIQLX7RKGgjPe0nTV+RU7WBflOABXybQbbdiM6j7TpSj8kw2TZT6nhrKcLnBbUGzsQDLP190u5lNqPEqZq4a46etvISCY38wF8O7qdMUAIPAl83Ql6aqSWt/PlPtkLqiflNabCFk1soxPtlyZ8Xx83S3UumU7/rQ8oQcnXsPcYe/AfXhhvoZgFfX4oLRXQ5XTlkHrlOE+pQ6q6m1o6H84aioSloiJZN+fdHvmpXc/5cyuLYswGU73Sd7TdfiaZuLe2MnP0BP1SxshevOam1w8gus1u06XbIqTjmGdjWbA8akxxDbh7V9u5hMnuPAwuswDJGdiWBMJ6upLqCLVW6yXcZRtXj3n6SGOR2EWRU975eBrCuTbWGVM+lOsJ5aKsR251qR2pXGMeBlwtd5EB1VcrjxP+ZImBdzO53BPcuyLrTXiAb3tXEXjRnarc9In9RB+/880dn0s0ZKfzv/mUV2iUtNiRH8TfjNBelogbkSXLnEtxXjXOSRPrUSwzmNkvHrJZLf6EqavNZp3fP3vVo7yCe4ngyeAvRGwrMpBnmdnKbYNe/M0zN8O5b8p+xOjfZYnq7K5/DrHU1GKPAKgov2hdUqNl02j34rLUpSxbW/T6J51KAjAjUqPOlySsy676/WyDULDoawnyQWQRO39WPV9iesRhZmO+Mn4Xj1Pc6pWHtGMKrHxGKANgUS+RPK9xTgHH9MyMFuOJuZ6XOQ5a/v6DiJ6vwDDLZ9rOVyif84Iljpo9J1/CNZcI429AedjbR+zq1gKbl5X+jQ8Ca1qjYrvN8h5Wvw6yKRjhOxfwLMjmT5LUNh070RXuCknECerv/tCh0Te0gzAwAAAAAAAAAA=" alt="Master-master replication: two clients each send reads and writes to a different master; the two masters replicate to each other." loading="lazy" width="900" height="534">
+        <figcaption><b>Figure 6.4</b> Master-master replication: each master takes reads and writes, and they replicate in both directions. Image from the primer,<a class="src" href="#s2">[2]</a> originally from Bonér’s deck.<a class="src" href="#s3">[3]</a></figcaption>
+      </figure>
+      <div class="prosCons">
+        <div class="con"><h4>Disadvantages</h4><ul>
+          <li>You need a <b>load balancer</b>, or changes to application logic, to decide where to write.<a class="src" href="#s2">[2]</a></li>
+          <li>Most such systems are either <b>loosely consistent</b> (violating ACID) or have higher <b>write latency</b> because of synchronization.<a class="src" href="#s2">[2]</a></li>
+          <li><b>Conflict resolution</b> matters more as write nodes are added and latency grows.<a class="src" href="#s2">[2]</a></li>
+          <li>Plus the shared replication disadvantages below.</li>
+        </ul></div>
+      </div>
+      <p>The Wikipedia article the primer links explains these trade-offs. In <b>multi-master replication</b>, any member of the group can update the data, and the system must propagate changes and resolve <b>conflicts</b> between concurrent updates, often through a <b>consensus algorithm</b> (Unit 5).<a class="src" href="#s4">[4]</a></p>
+      <ul>
+        <li><b>Why use it:</b> availability (if one master fails, others keep accepting updates), masters at several sites, and faster responses.<a class="src" href="#s4">[4]</a></li>
+        <li><b>Lazy vs eager:</b> most systems replicate <b>lazily</b> (asynchronously), which is why they are only loosely consistent. Systems that replicate <b>eagerly</b> (synchronously) are complex and add communication latency.<a class="src" href="#s4">[4]</a> These are the two options in the primer’s second disadvantage.</li>
+        <li><b>Real examples</b> include Microsoft Active Directory and OpenLDAP among directory servers, and CouchDB, Galera Cluster, MySQL Group Replication and PostgreSQL’s BDR among databases.<a class="src" href="#s4">[4]</a></li>
+      </ul>
+      <div class="tablewrap">
+        <table>
+          <caption class="tcap"><b>Table 6.2</b> Master-slave vs master-master</caption>
+          <thead><tr><th></th><th>Master-slave</th><th>Master-master</th></tr></thead>
+          <tbody>
+            <tr><td><b>Who takes writes</b></td><td>The master only</td><td>Every master</td></tr>
+            <tr><td><b>Who takes reads</b></td><td>Master and slaves</td><td>Every master</td></tr>
+            <tr><td><b>If a master fails</b></td><td>Read-only until a slave is promoted or a new master is provisioned</td><td>Reads and writes continue on the other master</td></tr>
+            <tr><td><b>Main extra cost</b></td><td>Promotion logic</td><td>Routing writes, consistency vs latency, conflict resolution</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:.85rem;color:var(--muted)">From the primer’s Database section.<a class="src" href="#s2">[2]</a></p>
+
+      <h3 id="buddy">Buddy replication</h3>
+      <p>Bonér’s deck lists a fourth form, <b>buddy replication</b>, shown only as diagrams.<a class="src" href="#s3">[3]</a> The JBoss Cache guide, which documents the technique, describes it: instead of copying its data to every node in the cluster, each node copies it to a few chosen <b>buddies</b>, by default just one, picked on a different physical host where possible.<a class="src" href="#s6">[6]</a></p>
+      <ul>
+        <li><b>Why:</b> replicating to all nodes costs more memory and network traffic with every node added. Buddies keep that cost about constant as the cluster grows.<a class="src" href="#s6">[6]</a></li>
+        <li><b>When:</b> it suits data such as <b>HTTP session</b> state, and only pays off with <b>session affinity</b> (sticky sessions, Unit 1), where a client’s requests keep reaching the same node.<a class="src" href="#s6">[6]</a></li>
+        <li><b>On failure:</b> a node that receives a request for data it lacks asks the cluster for it, including buddies’ backup copies, and takes ownership. JBoss calls this <b>data gravitation</b>. Data moves only when requested, avoiding a flood of transfers when a node dies.<a class="src" href="#s6">[6]</a></li>
+      </ul>
+      <figure>
+        <div class="figwrap">
+          <svg viewBox="0 0 640 204" role="img" aria-labelledby="f5t">
+            <title id="f5t">Buddy replication among four nodes A to D. Each node holds its own data and a backup of one neighbour's data: B backs up A, C backs up B, D backs up C, and A backs up D.</title>
+            <defs><marker id="ah5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="s-arrow"/></marker></defs>
+            <g>
+              <rect x="20" y="40" width="120" height="76" rx="10" class="s-box"/><text x="80" y="64" text-anchor="middle" class="s-tb">Node A</text>
+              <rect x="34" y="74" width="92" height="16" rx="4" class="s-acc"/><text x="80" y="86" text-anchor="middle" class="s-tm" style="fill:var(--ink)">own: a</text>
+              <rect x="34" y="94" width="92" height="16" rx="4" class="s-warm"/><text x="80" y="106" text-anchor="middle" class="s-tm" style="fill:var(--ink)">backup: d</text>
+            </g>
+            <g>
+              <rect x="180" y="40" width="120" height="76" rx="10" class="s-box"/><text x="240" y="64" text-anchor="middle" class="s-tb">Node B</text>
+              <rect x="194" y="74" width="92" height="16" rx="4" class="s-acc"/><text x="240" y="86" text-anchor="middle" class="s-tm" style="fill:var(--ink)">own: b</text>
+              <rect x="194" y="94" width="92" height="16" rx="4" class="s-warm"/><text x="240" y="106" text-anchor="middle" class="s-tm" style="fill:var(--ink)">backup: a</text>
+            </g>
+            <g>
+              <rect x="340" y="40" width="120" height="76" rx="10" class="s-box"/><text x="400" y="64" text-anchor="middle" class="s-tb">Node C</text>
+              <rect x="354" y="74" width="92" height="16" rx="4" class="s-acc"/><text x="400" y="86" text-anchor="middle" class="s-tm" style="fill:var(--ink)">own: c</text>
+              <rect x="354" y="94" width="92" height="16" rx="4" class="s-warm"/><text x="400" y="106" text-anchor="middle" class="s-tm" style="fill:var(--ink)">backup: b</text>
+            </g>
+            <g>
+              <rect x="500" y="40" width="120" height="76" rx="10" class="s-box"/><text x="560" y="64" text-anchor="middle" class="s-tb">Node D</text>
+              <rect x="514" y="74" width="92" height="16" rx="4" class="s-acc"/><text x="560" y="86" text-anchor="middle" class="s-tm" style="fill:var(--ink)">own: d</text>
+              <rect x="514" y="94" width="92" height="16" rx="4" class="s-warm"/><text x="560" y="106" text-anchor="middle" class="s-tm" style="fill:var(--ink)">backup: c</text>
+            </g>
+            <line x1="140" y1="78" x2="176" y2="78" class="s-line" marker-end="url(#ah5)"/>
+            <line x1="300" y1="78" x2="336" y2="78" class="s-line" marker-end="url(#ah5)"/>
+            <line x1="460" y1="78" x2="496" y2="78" class="s-line" marker-end="url(#ah5)"/>
+            <path d="M560,116 C560,180 80,180 80,120" class="s-line" marker-end="url(#ah5)"/>
+            <text x="320" y="192" text-anchor="middle" class="s-ts">each node replicates to its next neighbour only</text>
+          </svg>
+        </div>
+        <figcaption><b>Figure 6.5</b> Buddy replication with one buddy per node, the JBoss default (“next member” in the cluster).<a class="src" href="#s6">[6]</a> If node B fails, its data <code>b</code> is still on C. Compare Figure 6.3, where every write is copied to every slave. Drawing is illustrative.</figcaption>
+      </figure>
+
+      <h3 id="replication-cons">Disadvantages of replication</h3>
+      <p>These apply to <b>both</b> master-slave and master-master:<a class="src" href="#s2">[2]</a></p>
+      <div class="prosCons">
+        <div class="con"><h4>Disadvantages</h4><ul>
+          <li><b>Data loss</b> if the master fails before newly written data reaches other nodes.</li>
+          <li>Writes are <b>replayed</b> on the read replicas; with many writes, replicas get bogged down replaying them and can serve fewer reads.</li>
+          <li>More read slaves means more to replicate, so greater <b>replication lag</b>.</li>
+          <li>On some systems the master can write with several threads in parallel, while replicas apply writes <b>sequentially on one thread</b>.</li>
+          <li>Adds more hardware and additional complexity.</li>
+        </ul></div>
+      </div>
+      <div class="callout warn"><span class="label">In an interview</span><p>Pair each pattern with what it costs. Fail-over and replication both add hardware and complexity, and asynchronous copies can lose the last writes.<a class="src" href="#s1">[1]</a><a class="src" href="#s2">[2]</a> Master-slave is simpler but goes read-only on failure; master-master keeps writes going but forces a choice between loose consistency and slower writes.</p></div>
+    </section>
+
+    <!-- ===================== 6.3 ===================== -->
+    <section id="numbers">
+      <h2><span class="num">6.3</span>Availability in numbers</h2>
+      <p>Availability is usually given as <b>uptime</b> (or <b>downtime</b>): the percentage of time the service is available.<a class="src" href="#s1">[1]</a></p>
+      <div class="callout tip"><span class="label">Formula</span><p><code>Availability = uptime ÷ total time</code>, so allowed downtime = <code>(1 − availability) × period</code>.</p></div>
+
+      <h3 id="nines">Counting nines</h3>
+      <p>Availability is generally measured in <b>number of 9s</b>: a service with 99.99% availability has “four 9s”.<a class="src" href="#s1">[1]</a> Each extra nine cuts the allowed downtime by a factor of ten.</p>
+      <div class="tablewrap">
+        <table>
+          <caption class="tcap"><b>Table 6.3</b> Acceptable downtime for three and four nines</caption>
+          <thead><tr><th>Duration</th><th>99.9% (three 9s)</th><th>99.99% (four 9s)</th></tr></thead>
+          <tbody>
+            <tr><td><b>Downtime per year</b></td><td>8h 45min 57s</td><td>52min 35.7s</td></tr>
+            <tr><td><b>Downtime per month</b></td><td>43m 49.7s</td><td>4m 23s</td></tr>
+            <tr><td><b>Downtime per week</b></td><td>10m 4.8s</td><td>1m 0.5s*</td></tr>
+            <tr><td><b>Downtime per day</b></td><td>1m 26.4s</td><td>8.6s</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:.85rem;color:var(--muted)">From the primer’s two tables, merged.<a class="src" href="#s1">[1]</a> *The primer lists “1m 5s” here, but 0.01% of a week (604,800 s) is 60.48 s, consistent with its other rows. The figures use an average year of 365.2425 days.</p>
+
+      <figure>
+        <div class="calc" id="ninesCalc">
+          <div class="calc-row">
+            <label for="ninesIn">Availability (%)</label>
+            <input type="number" id="ninesIn" value="99.9" min="0" max="100" step="any" inputmode="decimal">
+            <div class="seg" role="group" aria-label="Presets">
+              <button type="button" data-v="99" aria-pressed="false">two 9s</button>
+              <button type="button" data-v="99.9" aria-pressed="true">three</button>
+              <button type="button" data-v="99.99" aria-pressed="false">four</button>
+              <button type="button" data-v="99.999" aria-pressed="false">five</button>
+            </div>
+          </div>
+          <div class="stat" aria-live="polite">
+            <div><span>Per year</span><b id="dY">—</b></div>
+            <div><span>Per month</span><b id="dM">—</b></div>
+            <div><span>Per week</span><b id="dW">—</b></div>
+            <div><span>Per day</span><b id="dD">—</b></div>
+          </div>
+        </div>
+        <figcaption><b>Figure 6.6</b> Interactive: downtime allowed by an availability target, using the formula above. Three and four nines reproduce Table 6.3.</figcaption>
+      </figure>
+
+      <h3 id="seq-par">Availability in sequence vs in parallel</h3>
+      <p>When a service is made of several components that can fail, its overall availability depends on how they are arranged.<a class="src" href="#s1">[1]</a></p>
+      <ul>
+        <li><b>In sequence</b> (the request needs every component), overall availability <b>decreases</b>:<br><code>Availability (Total) = Availability (Foo) × Availability (Bar)</code><br>Two components at 99.9% give <b>99.8%</b> in sequence.<a class="src" href="#s1">[1]</a></li>
+        <li><b>In parallel</b> (any one component is enough), overall availability <b>increases</b>:<br><code>Availability (Total) = 1 − (1 − Availability (Foo)) × (1 − Availability (Bar))</code><br>Two components at 99.9% give <b>99.9999%</b> in parallel.<a class="src" href="#s1">[1]</a></li>
+      </ul>
+      <p>The parallel formula reads: the service is down only if <i>both</i> are down at once, and <code>(1 − A)</code> is each one’s chance of being down. This is why fail-over and replication raise availability: they put components in parallel.</p>
+      <figure>
+        <div class="figwrap">
+          <svg viewBox="0 0 640 210" role="img" aria-labelledby="f7t">
+            <title id="f7t">Left: Foo and Bar in sequence, each 99.9 percent, total 99.8 percent. Right: Foo and Bar in parallel between a split and a join, each 99.9 percent, total 99.9999 percent.</title>
+            <defs><marker id="ah7" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="s-arrow"/></marker></defs>
+            <text x="150" y="22" text-anchor="middle" class="s-tb" style="fill:var(--bad)">In sequence</text>
+            <circle cx="22" cy="100" r="6" class="s-dot"/>
+            <line x1="28" y1="100" x2="56" y2="100" class="s-line" marker-end="url(#ah7)"/>
+            <rect x="60" y="76" width="80" height="48" rx="8" class="s-box"/><text x="100" y="98" text-anchor="middle" class="s-tb">Foo</text><text x="100" y="114" text-anchor="middle" class="s-tm">99.9%</text>
+            <line x1="140" y1="100" x2="166" y2="100" class="s-line" marker-end="url(#ah7)"/>
+            <rect x="170" y="76" width="80" height="48" rx="8" class="s-box"/><text x="210" y="98" text-anchor="middle" class="s-tb">Bar</text><text x="210" y="114" text-anchor="middle" class="s-tm">99.9%</text>
+            <line x1="250" y1="100" x2="276" y2="100" class="s-line" marker-end="url(#ah7)"/>
+            <circle cx="282" cy="100" r="6" class="s-dot"/>
+            <text x="150" y="168" text-anchor="middle" class="s-tm">0.999 × 0.999</text>
+            <text x="150" y="190" text-anchor="middle" class="s-tb" style="fill:var(--bad)">≈ 99.8%</text>
+            <line x1="320" y1="20" x2="320" y2="196" stroke="var(--line)"/>
+            <text x="490" y="22" text-anchor="middle" class="s-tb" style="fill:var(--good)">In parallel</text>
+            <circle cx="360" cy="100" r="6" class="s-dot"/>
+            <path d="M366,100 C390,100 390,62 432,62" class="s-line" marker-end="url(#ah7)"/>
+            <path d="M366,100 C390,100 390,138 432,138" class="s-line" marker-end="url(#ah7)"/>
+            <rect x="436" y="40" width="80" height="44" rx="8" class="s-box"/><text x="476" y="60" text-anchor="middle" class="s-tb">Foo</text><text x="476" y="76" text-anchor="middle" class="s-tm">99.9%</text>
+            <rect x="436" y="116" width="80" height="44" rx="8" class="s-box"/><text x="476" y="136" text-anchor="middle" class="s-tb">Bar</text><text x="476" y="152" text-anchor="middle" class="s-tm">99.9%</text>
+            <path d="M516,62 C560,62 560,100 584,100" class="s-line" marker-end="url(#ah7)"/>
+            <path d="M516,138 C560,138 560,100 584,100" class="s-line" marker-end="url(#ah7)"/>
+            <circle cx="590" cy="100" r="6" class="s-dot"/>
+            <text x="490" y="182" text-anchor="middle" class="s-tm">1 − 0.001 × 0.001</text>
+            <text x="490" y="202" text-anchor="middle" class="s-tb" style="fill:var(--good)">= 99.9999%</text>
+          </svg>
+        </div>
+        <figcaption><b>Figure 6.7</b> The primer’s Foo and Bar example.<a class="src" href="#s1">[1]</a> In sequence, a failure of either breaks the path; in parallel, both must fail. 0.999 × 0.999 = 0.998001, which the primer rounds to 99.8%.</figcaption>
+      </figure>
+
+      <figure>
+        <div class="calc" id="comboCalc">
+          <div class="calc-row">
+            <div class="seg" role="group" aria-label="Arrangement">
+              <button type="button" data-m="seq" aria-pressed="true">In sequence</button>
+              <button type="button" data-m="par" aria-pressed="false">In parallel</button>
+            </div>
+          </div>
+          <div class="calc-row">
+            <label for="aIn">Each component (%)</label><input type="number" id="aIn" value="99.9" min="0" max="100" step="any" inputmode="decimal">
+            <label for="nIn">Components (n)</label><input type="number" id="nIn" value="2" min="1" max="10" step="1" inputmode="numeric">
+          </div>
+          <p class="hint">n = 2 at 99.9% is the primer’s Foo and Bar. Sequence: A<sup>n</sup>. Parallel: 1 − (1 − A)<sup>n</sup>.</p>
+          <div class="calc-row"><span>Total availability:</span> <output class="big" id="comboOut" aria-live="polite">—</output> <span class="hint" id="comboDown"></span></div>
+        </div>
+        <figcaption><b>Figure 6.8</b> Interactive: the primer’s two formulas for n identical components, applying them repeatedly.<a class="src" href="#s1">[1]</a> Try three components at 99.9% in sequence (≈ 99.7%) vs in parallel.</figcaption>
+      </figure>
+      <div class="callout warn"><span class="label">Behind the parallel formula</span><p>Multiplying the two “down” chances assumes the components fail <b>independently</b>. Two servers on the same power supply or network switch can go down together, so real gains are smaller. Barrett’s “bunker” example in Unit 5 shows this: one power failure took down every server in a datacenter at once.<a class="src" href="#s5">[5]</a></p></div>
+    </section>
+
+    <!-- ===================== 6.4 ===================== -->
+    <section id="resources">
+      <h2><span class="num">6.4</span>Resources</h2>
+      <div class="res">
+        <a href="https://github.com/donnemartin/system-design-primer#availability-patterns"><b>Primer: Availability patterns</b><span>The source section for this unit</span></a>
+        <a href="https://github.com/donnemartin/system-design-primer#master-slave-replication"><b>Primer: Master-slave &amp; master-master</b><span>The replication details this section links to</span></a>
+        <a href="http://www.slideshare.net/jboner/scalability-availability-stability-patterns/"><b>Scalability, Availability &amp; Stability Patterns</b><span>Bonér’s deck; fail-over, fail-back and four kinds of replication</span></a>
+        <a href="https://en.wikipedia.org/wiki/Multi-master_replication"><b>Multi-master replication</b><span>Wikipedia; trade-offs and real implementations</span></a>
+        <a href="https://docs.jboss.org/jbosscache/3.2.1.GA/userguide_en/html/clustering.html"><b>JBoss Cache: buddy replication</b><span>How buddies, buddy pools and data gravitation work</span></a>
+        <a href="unit5.html"><b>Unit 5 · Consistency patterns</b><span>Sync vs async replication; Barrett’s fail-over options</span></a>
+        <a href="https://github.com/donnemartin/system-design-primer#domain-name-system"><b>Next: Domain name system</b><span>How DNS points clients at servers (Unit 7)</span></a>
+      </div>
+    </section>
+
+    <!-- ===================== 6.5 ===================== -->
+    <section id="sources">
+      <h2><span class="num">6.5</span>Sources</h2>
+      <ol class="sources">
+        <li id="s1">D. Martin et al., <a href="https://github.com/donnemartin/system-design-primer#availability-patterns">The System Design Primer: Availability patterns</a>, GitHub.</li>
+        <li id="s2">D. Martin et al., The System Design Primer: <a href="https://github.com/donnemartin/system-design-primer#master-slave-replication">Master-slave replication</a> and <a href="https://github.com/donnemartin/system-design-primer#master-master-replication">Master-master replication</a> (Database section), GitHub. Figures 6.3 and 6.4 from its <code>images/</code> folder.</li>
+        <li id="s3">J. Bonér, <a href="http://www.slideshare.net/jboner/scalability-availability-stability-patterns/">Scalability, Availability &amp; Stability Patterns</a>, slides, SlideShare (slides 32–49: availability patterns).</li>
+        <li id="s4">Wikipedia, <a href="https://en.wikipedia.org/wiki/Multi-master_replication">Multi-master replication</a>.</li>
+        <li id="s5">Unit 5 of this guide, citing R. Barrett, <a href="http://snarfed.org/transactions_across_datacenters_io.html">Transactions Across Datacenters</a>, Google I/O 2009.</li>
+        <li id="s6">JBoss Cache Users’ Guide 3.2, <a href="https://docs.jboss.org/jbosscache/3.2.1.GA/userguide_en/html/clustering.html">Clustering: Buddy replication</a>, JBoss.org (outside source, used to explain the deck’s buddy replication diagrams).</li>
+      </ol>
+    </section>
+  </main>
+</div>
+
+<aside class="note" id="notePanel" role="dialog" aria-labelledby="noteTitle" hidden>
+  <div class="note-head"><strong id="noteTitle">Key terms · Unit 6</strong><button id="noteClose" aria-label="Close key terms">×</button></div>
+  <h5>Fail-over</h5>
+  <dl>
+    <dt>High availability</dt><dd>Service keeps responding despite failures; via fail-over + replication.</dd>
+    <dt>Fail-over</dt><dd>Moving work from a failed server to a working one.</dd>
+    <dt>Heartbeat</dt><dd>Periodic “I’m alive” message; a missed one triggers fail-over.</dd>
+    <dt>Active-passive (master-slave)</dt><dd>One serves; standby takes over its IP on failure.</dd>
+    <dt>Hot · cold standby</dt><dd>Standby already running · must start up first (longer downtime).</dd>
+    <dt>Active-active (master-master)</dt><dd>Both serve and share load; DNS or app knows both.</dd>
+    <dt>Fail-back</dt><dd>Returning service to the original server after it recovers.</dd>
+  </dl>
+  <h5>Replication</h5>
+  <dl>
+    <dt>Replication</dt><dd>Keeping copies of the same data on several nodes.</dd>
+    <dt>Active · passive replication</dt><dd>Push changes out · pull from a peer on a miss.</dd>
+    <dt>Master-slave</dt><dd>Master reads/writes, slaves read only; read-only on master loss.</dd>
+    <dt>Promotion</dt><dd>Making a slave the new master.</dd>
+    <dt>Tree replication</dt><dd>Slaves replicating to further slaves.</dd>
+    <dt>Master-master</dt><dd>All masters read/write and coordinate; writes survive one loss.</dd>
+    <dt>Lazy · eager</dt><dd>Async (loose consistency) · sync (higher write latency).</dd>
+    <dt>Conflict resolution</dt><dd>Reconciling concurrent writes on different masters.</dd>
+    <dt>Replication lag</dt><dd>Delay before replicas get a write; grows with more slaves.</dd>
+    <dt>Buddy replication</dt><dd>Each node backs up to a few buddies, not all nodes.</dd>
+    <dt>Data gravitation</dt><dd>Data moves to the node that requests it after a failure.</dd>
+  </dl>
+  <h5>Numbers</h5>
+  <dl>
+    <dt>Uptime · downtime</dt><dd>% of time available · unavailable.</dd>
+    <dt>Nines</dt><dd>99.99% = four 9s; each nine is 10× less downtime.</dd>
+    <dt>In sequence</dt><dd>All needed: A × B; total drops.</dd>
+    <dt>In parallel</dt><dd>One enough: 1 − (1−A)(1−B); total rises.</dd>
+  </dl>
+</aside>
+
+<button class="fab" id="notesBtn" aria-label="Show key terms" aria-expanded="false" aria-controls="notePanel" title="Key terms">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M5 3h10l4 4v14H5z"/><path d="M15 3v4h4"/><path d="M8 11h8M8 15h8M8 19h5"/></svg>
+</button>
+<button class="fab hide" id="toTop" aria-label="Return to top" title="Return to top">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+</button>
+
+<script>
+(function(){
+  const links = Array.from(document.querySelectorAll('.toc a'));
+  const targets = links.map(a => document.getElementById(a.getAttribute('href').slice(1))).filter(Boolean);
+  const toc = document.getElementById('toc');
+  const toggle = document.getElementById('tocToggle');
+  const current = document.getElementById('tocCurrent');
+  const toTop = document.getElementById('toTop');
+  const mq = window.matchMedia('(max-width: 960px)');
+
+  function syncToc(){ if(!mq.matches){ toc.hidden = false; } else if(toggle.getAttribute('aria-expanded') !== 'true'){ toc.hidden = true; } }
+  syncToc(); mq.addEventListener ? mq.addEventListener('change', syncToc) : mq.addListener(syncToc);
+
+  toggle.addEventListener('click', () => {
+    const open = toggle.getAttribute('aria-expanded') === 'true';
+    toggle.setAttribute('aria-expanded', String(!open)); toc.hidden = open;
+  });
+  links.forEach(a => a.addEventListener('click', () => {
+    if(mq.matches){ toggle.setAttribute('aria-expanded','false'); toc.hidden = true; }
+  }));
+
+  function spy(){
+    const offset = mq.matches ? 90 : 40;
+    let idx = 0;
+    targets.forEach((t, i) => { if(t.getBoundingClientRect().top - offset <= 0) idx = i; });
+    if(window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) idx = targets.length - 1;
+    links.forEach(a => a.classList.remove('active','parent-active'));
+    const a = links[idx]; if(!a) return;
+    a.classList.add('active');
+    const parentLi = a.closest('ol').closest('li');
+    if(parentLi){ parentLi.querySelector(':scope > a').classList.add('parent-active'); }
+    current.textContent = a.textContent.replace(/^\d\.\d/, m => m + ' ');
+    if(!mq.matches){
+      const r = a.getBoundingClientRect(), rail = document.querySelector('.rail').getBoundingClientRect();
+      if(r.top < rail.top + 40 || r.bottom > rail.bottom - 40){ a.scrollIntoView({block:'nearest'}); }
+    }
+    toTop.classList.toggle('hide', window.scrollY < 500);
+  }
+  let ticking = false;
+  window.addEventListener('scroll', () => { if(!ticking){ requestAnimationFrame(() => { spy(); ticking = false; }); ticking = true; } }, {passive:true});
+  spy();
+
+  toTop.addEventListener('click', () => window.scrollTo({top:0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'}));
+
+  const panel = document.getElementById('notePanel'), btn = document.getElementById('notesBtn');
+  function setNote(open){ panel.hidden = !open; btn.setAttribute('aria-expanded', String(open)); }
+  btn.addEventListener('click', () => setNote(panel.hidden));
+  document.getElementById('noteClose').addEventListener('click', () => { setNote(false); btn.focus(); });
+  document.addEventListener('keydown', e => { if(e.key === 'Escape' && !panel.hidden){ setNote(false); btn.focus(); } });
+})();
+</script>
+<script>
+(function(){
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduce){ document.querySelectorAll('svg.play').forEach(s => { try{ s.setCurrentTime(8); s.pauseAnimations(); }catch(e){} }); }
+
+  const YEAR = 365.2425 * 86400;
+  function fmt(sec){
+    if(!isFinite(sec) || sec < 0) return '—';
+    if(sec < 1) return (sec*1000).toFixed(sec < 0.01 ? 2 : 0) + ' ms';
+    const d = Math.floor(sec/86400); sec -= d*86400;
+    const h = Math.floor(sec/3600); sec -= h*3600;
+    const m = Math.floor(sec/60); sec -= m*60;
+    const parts = [];
+    if(d) parts.push(d + 'd');
+    if(h) parts.push(h + 'h');
+    if(m) parts.push(m + 'm');
+    const s = Math.round(sec*10)/10;
+    if(s || !parts.length) parts.push((Number.isInteger(s) ? s : s.toFixed(1)) + 's');
+    return parts.join(' ');
+  }
+  function pct(x){
+    if(!isFinite(x)) return '—';
+    let s = (x*100).toFixed(8).replace(/0+$/,'').replace(/\.$/,'');
+    return s + '%';
+  }
+
+  // nines calculator
+  const nIn = document.getElementById('ninesIn');
+  const presets = document.querySelectorAll('#ninesCalc .seg button');
+  function nines(){
+    const a = parseFloat(nIn.value)/100, down = 1 - a;
+    const ok = a >= 0 && a <= 1;
+    document.getElementById('dY').textContent = ok ? fmt(down*YEAR) : '—';
+    document.getElementById('dM').textContent = ok ? fmt(down*YEAR/12) : '—';
+    document.getElementById('dW').textContent = ok ? fmt(down*604800) : '—';
+    document.getElementById('dD').textContent = ok ? fmt(down*86400) : '—';
+    presets.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === nIn.value)));
+  }
+  presets.forEach(b => b.addEventListener('click', () => { nIn.value = b.dataset.v; nines(); }));
+  nIn.addEventListener('input', nines); nines();
+
+  // sequence / parallel calculator
+  const aIn = document.getElementById('aIn'), cnt = document.getElementById('nIn');
+  const modes = document.querySelectorAll('#comboCalc .seg button');
+  let mode = 'seq';
+  function combo(){
+    const a = parseFloat(aIn.value)/100, n = Math.max(1, Math.min(10, parseInt(cnt.value,10) || 1));
+    const out = document.getElementById('comboOut'), dn = document.getElementById('comboDown');
+    if(!(a >= 0 && a <= 1)){ out.textContent = '—'; dn.textContent=''; return; }
+    const t = mode === 'seq' ? Math.pow(a, n) : 1 - Math.pow(1 - a, n);
+    out.textContent = pct(t);
+    dn.textContent = '≈ ' + fmt((1 - t)*YEAR) + ' down per year';
+  }
+  modes.forEach(b => b.addEventListener('click', () => {
+    mode = b.dataset.m; modes.forEach(x => x.setAttribute('aria-pressed', String(x === b))); combo();
+  }));
+  aIn.addEventListener('input', combo); cnt.addEventListener('input', combo); combo();
+})();
+</script>
+
+</body>
+</html>
