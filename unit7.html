@@ -1,0 +1,916 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Unit 7 · Domain Name System</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+img{max-width:100%}
+[hidden]{display:none!important}
+
+/* Layout: two-column study page — sticky, independently scrolling contents rail on the left; reading column on the right. Rail becomes a sticky top bar on small screens. */
+:root{
+  --bg:#F3F5F6; --surface:#FFFFFF; --ink:#17212B; --muted:#56636F; --line:#D5DCE1;
+  --accent:#0B6B75; --accent-soft:#DFEEEF; --warm:#A85A16; --warm-soft:#FAEEE0;
+  --code-bg:#EBF0F2; --good:#2E7D4F; --bad:#B23B3B;
+  --font:"IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --rail:270px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F1519; --surface:#151D23; --ink:#E2E8EC; --muted:#94A3AE; --line:#2A363F;
+  --accent:#55C2CA; --accent-soft:#123038; --warm:#E3A466; --warm-soft:#2D2218;
+  --code-bg:#1B252C; --good:#6FCB94; --bad:#EC8A8A; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F1519; --surface:#151D23; --ink:#E2E8EC; --muted:#94A3AE; --line:#2A363F;
+  --accent:#55C2CA; --accent-soft:#123038; --warm:#E3A466; --warm-soft:#2D2218;
+  --code-bg:#1B252C; --good:#6FCB94; --bad:#EC8A8A; color-scheme:dark}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.65;margin:0}
+a{color:var(--accent);text-underline-offset:2px}
+a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+code,kbd{font-family:var(--mono);font-size:.88em;background:var(--code-bg);padding:.08em .35em;border-radius:4px}
+
+.shell{display:grid;grid-template-columns:var(--rail) minmax(0,1fr);max-width:1240px;margin:0 auto;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));gap:40px}
+
+/* ---------- Contents rail ---------- */
+.rail{position:sticky;top:env(safe-area-inset-top, 0px);height:100vh;overflow-y:auto;padding-block:32px;
+  scrollbar-width:thin;overscroll-behavior:contain}
+.rail-head{display:flex;flex-direction:column;align-items:flex-start;gap:14px;position:sticky;top:-32px;z-index:2;background:var(--bg);padding-block:32px 4px;margin-top:-32px;margin-bottom:0}
+.back{display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:var(--ink);font-size:.85rem;font-weight:500;
+  border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 12px 6px 9px}
+.back:hover{border-color:var(--accent);color:var(--accent)}
+.rail h2{font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 12px;font-weight:600}
+.toc-toggle{display:none}
+.toc ol{list-style:none;margin:0;padding:0}
+.toc li{margin:0}
+.toc a{display:block;text-decoration:none;color:var(--muted);font-size:.9rem;line-height:1.35;padding:6px 10px;border-left:2px solid var(--line)}
+.toc a:hover{color:var(--ink)}
+.toc ol ol a{padding-left:24px;font-size:.84rem}
+.toc a.active{color:var(--accent);border-left-color:var(--accent);background:var(--accent-soft);font-weight:600}
+.toc a.parent-active{color:var(--ink);border-left-color:var(--accent)}
+.toc a{text-align:left;hyphens:none;scroll-margin-top:140px;scroll-margin-bottom:24px}
+.toc .num{font-family:var(--mono);font-size:.8em;margin-right:6px}
+
+/* ---------- Main ---------- */
+main{min-width:0;padding-block:40px 120px;max-width:780px}
+p,li,figcaption,.note p{text-align:justify;hyphens:auto;-webkit-hyphens:auto}
+header.unit{border-bottom:1px solid var(--line);padding-bottom:28px;margin-bottom:8px}
+.eyebrow{font-family:var(--mono);font-size:.8rem;color:var(--accent);letter-spacing:.06em;margin:0 0 8px;text-align:left}
+h1{font-size:clamp(1.9rem,4.4vw,2.6rem);line-height:1.15;margin:0 0 14px;font-weight:700;text-wrap:balance;letter-spacing:-.01em}
+h2{font-size:1.6rem;line-height:1.25;margin:64px 0 12px;text-wrap:balance;font-weight:700}
+h3{font-size:1.2rem;line-height:1.3;margin:44px 0 8px;text-wrap:balance;font-weight:600}
+h4{font-size:1rem;margin:26px 0 6px;font-weight:600}
+h2 .num,h3 .num{font-family:var(--mono);color:var(--accent);font-weight:500;margin-right:10px;font-size:.85em}
+.lede{font-size:1.08rem;color:var(--muted);margin:0}
+.meta{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:16px;font-size:.85rem;color:var(--muted)}
+.meta span{white-space:nowrap}
+ul,ol{padding-left:1.3em}
+li{margin:4px 0}
+.src{font-size:.72em;vertical-align:super;line-height:0;text-decoration:none;font-family:var(--mono);margin-left:1px}
+
+/* callouts */
+.callout{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:14px 18px;margin:20px 0}
+.callout.tip{border-left:4px solid var(--accent)}
+.callout.warn{border-left:4px solid var(--warm);background:var(--warm-soft)}
+.callout .label{display:block;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--muted);margin-bottom:4px;text-align:left}
+.callout p{margin:4px 0}
+
+.prosCons{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:16px 0}
+.prosCons div{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 16px;min-width:0}
+.prosCons h4{margin:4px 0;font-size:.85rem;letter-spacing:.06em;text-transform:uppercase}
+.prosCons .pro h4{color:var(--good)} .prosCons .con h4{color:var(--bad)}
+.prosCons ul{margin:4px 0;padding-left:1.1em}
+
+blockquote{margin:18px 0;padding:8px 18px;border-left:3px solid var(--warm);color:var(--ink);font-style:italic}
+blockquote cite{display:block;font-style:normal;font-size:.85rem;color:var(--muted);margin-top:4px}
+
+/* figures + tables */
+figure{margin:26px 0;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px}
+.figwrap{overflow-x:auto}
+figure svg{display:block;width:100%;height:auto;min-width:520px}
+figcaption{font-size:.88rem;color:var(--muted);margin-top:10px;border-top:1px dashed var(--line);padding-top:8px}
+figcaption b{color:var(--ink);font-family:var(--mono);font-weight:500;margin-right:4px}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem;min-width:520px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;font-size:.8rem;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+td code{white-space:nowrap}
+table.hist td code{white-space:normal;word-break:break-word}
+.tcap{caption-side:top;text-align:left;font-size:.88rem;color:var(--muted);padding-bottom:8px}
+.tcap b{color:var(--ink);font-family:var(--mono);font-weight:500;margin-right:4px}
+
+table.tt td[colspan],table.tt td.g,table.tt td.o,table.tt td.b{text-align:center;font-weight:500}
+table.tt td.g{background:color-mix(in srgb, var(--good) 18%, transparent)}
+table.tt td.o{background:color-mix(in srgb, #D9B300 22%, transparent)}
+table.tt td.b{background:color-mix(in srgb, var(--bad) 18%, transparent)}
+table.tt{table-layout:fixed}
+table.tt th:first-child,table.tt td:first-child{width:18%}
+table.tt th,table.tt td{border:1px solid var(--line)}
+table.tt th:not(:first-child){text-align:center}
+/* svg tokens */
+.s-box{fill:var(--surface);stroke:var(--line);stroke-width:1.5}
+.s-acc{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5}
+.s-warm{fill:var(--warm-soft);stroke:var(--warm);stroke-width:1.5}
+.s-line{stroke:var(--muted);stroke-width:1.5;fill:none}
+.s-dash{stroke:var(--muted);stroke-width:1.3;fill:none;stroke-dasharray:5 4}
+.s-t{fill:var(--ink);font-family:var(--font);font-size:13px}
+.s-tb{fill:var(--ink);font-family:var(--font);font-size:13px;font-weight:600}
+.s-ts{fill:var(--muted);font-family:var(--font);font-size:11px}
+.s-tm{fill:var(--muted);font-family:var(--mono);font-size:11px}
+.s-dot{fill:var(--accent)} .s-dot2{fill:var(--warm)}
+.s-arrow{fill:var(--muted)}
+@media (prefers-reduced-motion: reduce){.anim{display:none}}
+
+/* resource cards */
+.res{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:16px 0}
+.res a{display:block;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:12px 14px;text-decoration:none;color:var(--ink);min-width:0}
+.res a:hover{border-color:var(--accent)}
+.res b{display:block;font-size:.95rem}
+.res span{display:block;font-size:.82rem;color:var(--muted);margin-top:2px}
+ol.sources{font-size:.88rem;padding-left:2.2em}
+ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
+
+/* floating buttons */
+.fab{position:fixed;right:calc(18px + env(safe-area-inset-right, 0px));width:46px;height:46px;border-radius:50%;
+  border:1px solid var(--line);background:var(--surface);color:var(--ink);display:grid;place-items:center;cursor:pointer;
+  box-shadow:0 4px 14px rgba(0,0,0,.12);z-index:40;transition:opacity .2s, transform .2s}
+.fab svg{width:20px;height:20px}
+#toTop{bottom:calc(18px + env(safe-area-inset-bottom, 0px))}
+#notesBtn{bottom:calc(74px + env(safe-area-inset-bottom, 0px));background:var(--warm-soft);border-color:var(--warm);color:var(--warm)}
+#toTop.hide{opacity:0;pointer-events:none;transform:translateY(8px)}
+
+/* key-terms note widget */
+.note{position:fixed;right:calc(18px + env(safe-area-inset-right, 0px));bottom:calc(130px + env(safe-area-inset-bottom, 0px));
+  width:min(380px,calc(100vw - 36px));max-height:min(70vh,620px);overflow:auto;z-index:45;
+  background:var(--warm-soft);border:1px solid var(--warm);border-radius:12px;padding:0 18px 16px;
+  box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.note-head{position:sticky;top:0;background:var(--warm-soft);display:flex;justify-content:space-between;align-items:center;padding:14px 0 8px;border-bottom:1px dashed var(--warm)}
+.note-head strong{font-size:.95rem}
+.note-head button{border:0;background:none;color:var(--ink);font-size:1.3rem;cursor:pointer;line-height:1;padding:4px 8px}
+.note dl{margin:8px 0 0}
+.note dt{font-weight:600;font-size:.9rem;margin-top:10px}
+.note dd{margin:2px 0 0;font-size:.85rem;color:var(--ink);text-align:justify;hyphens:auto}
+.note h5{font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--warm);margin:16px 0 0}
+
+/* ---------- small screens ---------- */
+@media (max-width: 960px){
+  .shell{display:block}
+  body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top, 0px);z-index:31;background:var(--surface)}
+  .rail{position:sticky;top:env(safe-area-inset-top, 0px);z-index:30;height:auto;max-height:none;overflow:visible;
+    background:var(--surface);border-bottom:1px solid var(--line);padding:0;
+    margin-left:calc(-1 * max(16px, env(safe-area-inset-left, 0px)));margin-right:calc(-1 * max(16px, env(safe-area-inset-right, 0px)));
+    padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+  .rail-head{position:static;flex-direction:row;align-items:center;justify-content:space-between;padding-block:10px;margin-top:0;background:transparent}
+  .rail h2{display:none}
+  .toc-toggle{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);
+    border-radius:8px;padding:6px 10px;font:500 .85rem var(--font);cursor:pointer;min-width:0;max-width:72%}
+  .toc-toggle span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .toc{max-height:60vh;overflow-y:auto;padding-bottom:12px}
+  .toc[hidden]{display:none!important}
+  html{scroll-padding-top:70px}
+  main{padding-top:24px}
+}
+@media (min-width: 961px){ .toc[hidden]{display:block!important} }
+/* ---------- Unit 7 additions ---------- */
+figure img{display:block;margin:0 auto;max-width:560px;width:100%;height:auto;border-radius:8px;background:#fff}
+pre{font-family:var(--mono);font-size:.84rem;line-height:1.55;background:var(--code-bg);border-radius:10px;padding:12px 14px;overflow-x:auto;margin:16px 0}
+pre code{background:none;padding:0;font-size:inherit}
+pre .c{color:var(--muted)}
+.ctrl{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin-top:12px}
+.ctrl .count{font:500 .85rem var(--mono);color:var(--muted)}
+.step-text{margin:10px 0 0;min-height:3.4em;font-size:.93rem}
+.st path{stroke:var(--muted);stroke-width:1.3;fill:none;stroke-dasharray:4 4;opacity:.45}
+.st.on path{stroke-dasharray:none;opacity:1;stroke-width:2.6}
+.st.req.on path{stroke:var(--accent)} .st.res.on path{stroke:var(--warm)}
+.st.done path{opacity:.75}
+.wrr{display:grid;gap:14px}
+.wrr-servers{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.wrr-servers div{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
+.wrr-servers label{display:flex;justify-content:space-between;align-items:center;font-size:.88rem;font-weight:600}
+.wrr-servers input{width:64px;font:500 .95rem var(--mono);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:4px 6px}
+.wrr-servers small{display:block;font-size:.78rem;color:var(--muted);margin-top:4px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:600 .82rem var(--mono);border-radius:6px;padding:4px 9px;border:1px solid var(--line);background:var(--bg)}
+.chip.A{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.chip.B{background:var(--warm-soft);border-color:var(--warm);color:var(--warm)}
+.chip.C{background:color-mix(in srgb, var(--good) 14%, transparent);border-color:var(--good);color:var(--good)}
+.wrr .hint{font-size:.82rem;color:var(--muted);margin:0}
+.wrr .out{font-size:.9rem}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;border-right:1px solid var(--line);background:var(--bg);color:var(--ink);font:500 .85rem var(--font);padding:7px 14px;cursor:pointer}
+.seg button:last-child{border-right:0}
+.seg button:hover:not(:disabled){background:var(--accent-soft)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--surface)}
+.seg button:disabled{color:var(--muted);opacity:.55;cursor:default}
+tr.grp td{background:var(--accent-soft);color:var(--accent);font-size:.74rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:6px 10px}
+.wrr-servers input:disabled{opacity:.45}
+.wrr-servers label.mnt{display:flex;justify-content:flex-start;gap:6px;font-weight:500;font-size:.8rem;color:var(--ink);margin-bottom:2px}
+.wrr-servers label.mnt input{width:auto;accent-color:var(--warm)}
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <aside class="rail" aria-label="Contents">
+    <div class="rail-head">
+      <a class="back" href="index.html" title="Back to all units"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>All units</a>
+      <h2>Contents</h2>
+      <button class="toc-toggle" id="tocToggle" aria-expanded="false" aria-controls="toc">
+        <span id="tocCurrent">Contents</span>
+        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.6" fill="none"/></svg>
+      </button>
+    </div>
+    <nav class="toc" id="toc" hidden>
+      <ol>
+        <li><a href="#overview"><span class="num">7.0</span>What DNS does</a></li>
+        <li><a href="#namespace"><span class="num">7.1</span>The namespace</a>
+          <ol>
+            <li><a href="#zones">Zones and delegation</a></li>
+            <li><a href="#who-runs">Who runs it</a></li>
+          </ol>
+        </li>
+        <li><a href="#resolution"><span class="num">7.2</span>Resolving a name</a>
+          <ol>
+            <li><a href="#roles">Who takes part</a></li>
+            <li><a href="#walkthrough">Step by step</a></li>
+            <li><a href="#rec-iter">Recursive vs iterative</a></li>
+          </ol>
+        </li>
+        <li><a href="#caching"><span class="num">7.3</span>Caching and TTL</a>
+          <ol>
+            <li><a href="#ttl">Time to live</a></li>
+            <li><a href="#propagation">Stale answers</a></li>
+            <li><a href="#choosing-ttl">Choosing a TTL</a></li>
+          </ol>
+        </li>
+        <li><a href="#records"><span class="num">7.4</span>Record types</a>
+          <ol>
+            <li><a href="#cname">CNAME rules</a></li>
+            <li><a href="#mx">MX priority</a></li>
+          </ol>
+        </li>
+        <li><a href="#routing"><span class="num">7.5</span>Managed DNS and routing</a>
+          <ol>
+            <li><a href="#wrr">Weighted round robin</a></li>
+            <li><a href="#latency">Latency-based</a></li>
+            <li><a href="#geo">Geolocation-based</a></li>
+          </ol>
+        </li>
+        <li><a href="#cons"><span class="num">7.6</span>Disadvantages</a>
+          <ol>
+            <li><a href="#ddos">DDoS: the Dyn attack</a></li>
+            <li><a href="#security">Security, briefly</a></li>
+          </ol>
+        </li>
+        <li><a href="#resources"><span class="num">7.7</span>Resources</a></li>
+        <li><a href="#sources"><span class="num">7.8</span>Sources</a></li>
+      </ol>
+    </nav>
+  </aside>
+
+  <main id="top">
+    <header class="unit">
+      <p class="eyebrow">SYSTEM DESIGN PRIMER · UNIT 7</p>
+      <h1>Domain name system</h1>
+      <p class="lede">Clients reach servers by IP address, but people type names. The <b>Domain Name System (DNS)</b> translates a name such as <code>www.example.com</code> into an IP address.<a class="src" href="#s1">[1]</a> This unit covers how the namespace is organised, how a resolver walks it from the root down, how caching and <b>TTL</b> keep lookups fast (and sometimes stale), the main record types, how managed DNS services route traffic, and DNS’s weak spots.</p>
+      <div class="meta"><span>Primer section · Domain name system</span><span>Microsoft · DNS Architecture</span><span>Wikipedia · Domain Name System</span><span>DNSimple · DNS articles</span></div>
+    </header>
+
+    <!-- ===================== 7.0 ===================== -->
+    <section id="overview">
+      <h2><span class="num">7.0</span>What DNS does</h2>
+      <p>Computers find each other by <b>IP address</b>, much like a street address. DNS sits in between: given a domain name, it returns the matching address. This translation is called <b>DNS resolution</b>.<a class="src" href="#s4">[4]</a> Wikipedia describes DNS as a <b>hierarchical and distributed</b> name service and compares it to a phone book.<a class="src" href="#s3">[3]</a></p>
+      <p>Why distributed? Before DNS, every host on the ARPANET was listed in one centrally kept <b>HOSTS</b> file (<code>HOSTS.TXT</code>, maintained by SRI). As the network grew, so did the file and the traffic needed to keep copies updated.<a class="src" href="#s2">[2]</a><a class="src" href="#s3">[3]</a> DNS spreads the database across many servers instead, so it can grow without a central bottleneck and each organisation runs its own part.<a class="src" href="#s2">[2]</a> Paul Mockapetris created it in 1983; the core specifications today are RFC 1034 and RFC 1035 (1987).<a class="src" href="#s3">[3]</a></p>
+      <figure>
+        <img src="data:image/webp;base64,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" alt="How Does DNS Work: a device asks the ISP DNS server for directions to www.google.com. The ISP server does not have the domain, asks another DNS server, receives 173.194.115.96, caches it, and returns it. The device then connects to the Google server at that address." width="638" height="449" loading="lazy">
+        <figcaption><b>Figure 7.1</b> The primer’s overview diagram: the device asks its ISP’s DNS server; that server asks another DNS server, <b style="font-family:inherit;margin:0;color:inherit;font-weight:600">caches</b> the answer, and returns the IP so the device can connect.<a class="src" href="#s1">[1]</a> The drawing simplifies one step: a real root server normally does not hold the answer but <i>refers</i> the resolver to the next server down (7.2).<a class="src" href="#s2">[2]</a><a class="src" href="#s10">[10]</a> Image from the primer, originally from a DNS security presentation.<a class="src" href="#s1">[1]</a></figcaption>
+      </figure>
+    </section>
+
+    <!-- ===================== 7.1 ===================== -->
+    <section id="namespace">
+      <h2><span class="num">7.1</span>The namespace</h2>
+      <p>The primer calls DNS <b>hierarchical</b>, with a few authoritative servers at the top level.<a class="src" href="#s1">[1]</a> The names themselves form a tree called the <b>domain namespace</b>. A name is a series of <b>labels</b> separated by dots, read from right (the top of the tree) to left.<a class="src" href="#s2">[2]</a></p>
+
+      <div class="tablewrap">
+        <table>
+          <caption class="tcap"><b>Table 7.1</b> Levels of a domain name</caption>
+          <thead><tr><th>Level</th><th>What it is</th><th>Example</th></tr></thead>
+          <tbody>
+            <tr><td><b>Root</b></td><td>The unnamed top of the tree, written as a trailing dot</td><td><code>.</code></td></tr>
+            <tr><td><b>Top-level domain (TLD)</b></td><td>Type of organisation, or a two-letter country code</td><td><code>com</code>, <code>org</code>, <code>gov</code>, <code>vn</code></td></tr>
+            <tr><td><b>Second-level domain</b></td><td>A name registered to an organisation through a <b>registrar</b></td><td><code>example.com</code></td></tr>
+            <tr><td><b>Subdomain</b></td><td>A name the organisation creates under its domain</td><td><code>shop.example.com</code></td></tr>
+            <tr><td><b>Host name</b></td><td>The leftmost label, naming one machine or resource</td><td><code>www.example.com</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:.82rem;color:var(--muted)">Levels and definitions from Microsoft’s DNS Architecture.<a class="src" href="#s2">[2]</a> Example names are illustrative; <code>example.com</code> is reserved for documentation.</p>
+
+      <p>A <b>fully qualified domain name (FQDN)</b> spells out the full path to the root and so ends in a dot: <code>www.example.com.</code><a class="src" href="#s2">[2]</a> Each label can be up to 63 characters and a full name up to 253.<a class="src" href="#s3">[3]</a></p>
+
+      <figure>
+        <div class="figwrap">
+          <svg viewBox="0 0 720 300" role="img" aria-labelledby="f2t">
+            <title id="f2t">The domain namespace as a tree, one row per level. The root, a dot, sits at the top. Below it are the top-level domains com, org, gov and vn. Below com is example.com, below org is wikipedia.org, below gov is whitehouse.gov. Below example.com are the hosts www, mail and shop. The path from www up through example.com and com to the root is highlighted, and a dashed box marks the example.com zone.</title>
+            <!-- level rows -->
+            <g class="s-ts">
+              <text x="12" y="36">root</text>
+              <text x="12" y="107">TLD</text>
+              <text x="12" y="181">2nd level</text>
+              <text x="12" y="250">host</text>
+            </g>
+            <path d="M12,68 L708,68 M12,140 L708,140 M12,212 L708,212" stroke="var(--line)" stroke-width="1" fill="none"/>
+            <!-- zone boundary -->
+            <rect x="106" y="150" width="252" height="138" rx="12" fill="none" stroke="var(--warm)" stroke-width="1.4" stroke-dasharray="6 4"/>
+            <text x="118" y="281" class="s-ts" style="fill:var(--warm)">zone: example.com</text>
+            <!-- edges -->
+            <path d="M430,48 L430,86 M430,48 L570,86 M430,48 L675,86" class="s-line"/>
+            <path d="M430,118 L430,160 M570,118 L570,160" class="s-line"/>
+            <path d="M232,192 L310,232" class="s-line"/>
+            <!-- highlighted path www → example.com → com → root -->
+            <path d="M150,232 L232,192 M232,160 L232,118 M232,86 L430,48" stroke="var(--accent)" stroke-width="2.4" fill="none"/>
+            <path d="M232,192 L230,232" class="s-line"/>
+            <!-- root -->
+            <rect x="395" y="14" width="70" height="34" rx="9" class="s-acc"/><text x="430" y="36" text-anchor="middle" class="s-tb">.</text>
+            <!-- TLDs -->
+            <rect x="192" y="86" width="80" height="32" rx="8" class="s-acc"/><text x="232" y="107" text-anchor="middle" class="s-t">com</text>
+            <rect x="390" y="86" width="80" height="32" rx="8" class="s-box"/><text x="430" y="107" text-anchor="middle" class="s-t">org</text>
+            <rect x="530" y="86" width="80" height="32" rx="8" class="s-box"/><text x="570" y="107" text-anchor="middle" class="s-t">gov</text>
+            <rect x="635" y="86" width="80" height="32" rx="8" class="s-box"/><text x="675" y="107" text-anchor="middle" class="s-t">vn</text>
+            <!-- second level -->
+            <rect x="174" y="160" width="116" height="32" rx="8" class="s-acc"/><text x="232" y="181" text-anchor="middle" class="s-t">example.com</text>
+            <rect x="372" y="160" width="116" height="32" rx="8" class="s-box"/><text x="430" y="181" text-anchor="middle" class="s-t">wikipedia.org</text>
+            <rect x="506" y="160" width="128" height="32" rx="8" class="s-box"/><text x="570" y="181" text-anchor="middle" class="s-t">whitehouse.gov</text>
+            <!-- hosts -->
+            <rect x="118" y="232" width="64" height="28" rx="7" class="s-acc"/><text x="150" y="251" text-anchor="middle" class="s-t">www</text>
+            <rect x="198" y="232" width="64" height="28" rx="7" class="s-box"/><text x="230" y="251" text-anchor="middle" class="s-t">mail</text>
+            <rect x="278" y="232" width="64" height="28" rx="7" class="s-box"/><text x="310" y="251" text-anchor="middle" class="s-t">shop</text>
+            <text x="380" y="246" class="s-tm" style="fill:var(--ink)">FQDN: www.example.com.</text><text x="380" y="264" class="s-ts">the final dot stands for the root</text>
+          </svg>
+        </div>
+        <figcaption><b>Figure 7.2</b> Part of the namespace tree. <code>www.example.com.</code> is the highlighted path from the <code>www</code> leaf up through <code>example</code> and <code>com</code> to the root, read right to left. Each row is one level; the dashed box is one <b style="font-family:inherit;margin:0;color:inherit;font-weight:600">zone</b> (next section). Structure from Microsoft’s architecture page;<a class="src" href="#s2">[2]</a> the specific names are illustrative.</figcaption>
+      </figure>
+
+      <h3 id="zones">Zones and delegation</h3>
+      <p>No server holds the whole tree. It is cut into <b>zones</b>: a zone is a connected part of the namespace whose records are stored together in a <b>zone file</b>. A server that loads a zone is <b>authoritative</b> for the names in it.<a class="src" href="#s2">[2]</a></p>
+      <ul>
+        <li>The first record in every zone is the <b>SOA</b> (start of authority). It names the zone’s primary server and holds timing values used for caching and copying the zone.<a class="src" href="#s2">[2]</a></li>
+        <li><b>Delegation</b> hands a subtree to other servers. The parent zone holds <b>NS records</b> that point to the child zone’s name servers; for example, the <code>.com</code> servers hold the NS records for <code>example.com</code>.<a class="src" href="#s2">[2]</a><a class="src" href="#s5">[5]</a> Delegating spreads both the management work and the query load.<a class="src" href="#s2">[2]</a></li>
+        <li>A <b>primary</b> zone is the only writable copy. <b>Secondary</b> zones are read-only copies kept current by a <b>zone transfer</b>, either full (<b>AXFR</b>) or only the changed records (<b>IXFR</b>). A transfer starts when the primary sends a <b>NOTIFY</b> or when the secondary’s refresh interval (set in the SOA) runs out.<a class="src" href="#s2">[2]</a></li>
+      </ul>
+      <div class="callout tip"><span class="label">Connection to Unit 6</span><p>Primary and secondary zones are master-slave replication applied to DNS data: one writable copy, read-only copies that can still answer queries if the primary is down.</p></div>
+
+      <h3 id="who-runs">Who runs it</h3>
+      <p>The primer notes that DNS servers are generally managed by <b>governments, ISPs and large companies</b>.<a class="src" href="#s1">[1]</a> Going down the tree:</p>
+      <ul>
+        <li><b>Root servers.</b> There are 13 named root server identities, <code>a.root-servers.net</code> to <code>m.root-servers.net</code>, run by 12 organisations (Verisign runs two), including universities, U.S. government agencies, ICANN, RIPE NCC and Japan’s WIDE Project. Each identity is served from many copies worldwide through <b>anycast</b>, and they all publish the root zone file that ICANN maintains.<a class="src" href="#s10">[10]</a></li>
+        <li><b>TLD servers</b> manage domains such as <code>.com</code> and <code>.org</code> and point to each domain’s authoritative servers.<a class="src" href="#s4">[4]</a></li>
+        <li><b>Authoritative servers</b> for a domain are run by its owner or a DNS host; you pick the provider at your registrar.<a class="src" href="#s4">[4]</a><a class="src" href="#s5">[5]</a></li>
+      </ul>
+    </section>
+
+    <!-- ===================== 7.2 ===================== -->
+    <section id="resolution">
+      <h2><span class="num">7.2</span>Resolving a name</h2>
+      <p>Your <b>router or ISP</b> tells your device which DNS server(s) to contact for lookups.<a class="src" href="#s1">[1]</a> That server then does the work of walking the tree.</p>
+
+      <h3 id="roles">Who takes part</h3>
+      <ul>
+        <li><b>Stub resolver</b>: the small DNS client on your device. It sends the question and waits for a final answer.<a class="src" href="#s4">[4]</a></li>
+        <li><b>Recursive resolver</b>: takes the question and does every lookup needed to return a final answer or an error. Your router, your ISP’s server, <code>8.8.8.8</code> and <code>1.1.1.1</code> are examples.<a class="src" href="#s4">[4]</a></li>
+        <li><b>Root servers</b> point to the right TLD servers; <b>TLD servers</b> point to the domain’s <b>authoritative name servers</b>, which hold the official records.<a class="src" href="#s4">[4]</a></li>
+      </ul>
+      <p>Each resolver ships with a list of root server addresses, called <b>root hints</b>, so it always knows where to start.<a class="src" href="#s2">[2]</a></p>
+
+      <h3 id="walkthrough">Step by step</h3>
+      <p>Microsoft’s architecture page traces one lookup in eight steps.<a class="src" href="#s2">[2]</a> Figure 7.3 follows the same sequence for <code>www.example.com</code>, assuming nothing is cached yet.</p>
+      <figure>
+        <div class="figwrap">
+          <svg viewBox="0 0 680 320" role="img" aria-labelledby="f3t" id="resolveSvg">
+            <title id="f3t">Resolving www.example.com. Step 1: the device sends a recursive query to the recursive resolver. Steps 2 and 3: the resolver asks a root server, which refers it to the .com servers. Steps 4 and 5: the resolver asks a .com TLD server, which refers it to example.com's name servers. Steps 6 and 7: the resolver asks the authoritative server, which answers 192.0.2.1. Step 8: the resolver caches the answer and returns it to the device.</title>
+            <defs>
+              <marker id="mA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/></marker>
+              <marker id="mW" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--warm)"/></marker>
+              <marker id="mM" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="s-arrow" opacity=".6"/></marker>
+            </defs>
+            <!-- message panel -->
+            <rect x="20" y="16" width="226" height="92" rx="10" class="s-box"/>
+            <text x="34" y="40" class="s-tm" id="msgStep">STEP 1 OF 8</text>
+            <text x="34" y="64" class="s-tb" id="msgRoute">device → resolver</text>
+            <text x="34" y="88" class="s-tm" id="msgBody" style="fill:var(--ink)">A? www.example.com</text>
+            <!-- cache panel -->
+            <rect x="20" y="222" width="380" height="80" rx="10" fill="none" stroke="var(--line)" stroke-dasharray="5 4"/>
+            <text x="34" y="246" class="s-ts">Resolver cache</text>
+            <text x="34" y="276" class="s-tm" id="cacheLine" style="fill:var(--ink)">(empty)</text>
+            <!-- nodes -->
+            <rect x="20" y="130" width="130" height="60" rx="10" class="s-box"/>
+            <text x="85" y="156" text-anchor="middle" class="s-tb">Your device</text><text x="85" y="175" text-anchor="middle" class="s-ts">stub resolver</text>
+            <rect x="255" y="130" width="150" height="60" rx="10" class="s-acc"/>
+            <text x="330" y="156" text-anchor="middle" class="s-tb">Recursive resolver</text><text x="330" y="175" text-anchor="middle" class="s-ts">ISP · 8.8.8.8 · 1.1.1.1</text>
+            <rect x="505" y="10" width="160" height="50" rx="10" class="s-box"/>
+            <text x="585" y="32" text-anchor="middle" class="s-tb">Root server</text><text x="585" y="50" text-anchor="middle" class="s-tm">.</text>
+            <rect x="505" y="135" width="160" height="50" rx="10" class="s-box"/>
+            <text x="585" y="157" text-anchor="middle" class="s-tb">TLD server</text><text x="585" y="175" text-anchor="middle" class="s-tm">com.</text>
+            <rect x="505" y="260" width="160" height="50" rx="10" class="s-warm"/>
+            <text x="585" y="282" text-anchor="middle" class="s-tb">Authoritative</text><text x="585" y="300" text-anchor="middle" class="s-tm">example.com.</text>
+            <!-- arrows -->
+            <g class="st req" data-s="1"><path d="M150,150 L252,150"/></g>
+            <g class="st req" data-s="2"><path d="M405,134 L502,34"/></g>
+            <g class="st res" data-s="3"><path d="M505,48 L408,146"/></g>
+            <g class="st req" data-s="4"><path d="M405,155 L502,155"/></g>
+            <g class="st res" data-s="5"><path d="M505,167 L408,167"/></g>
+            <g class="st req" data-s="6"><path d="M405,176 L502,276"/></g>
+            <g class="st res" data-s="7"><path d="M505,290 L408,188"/></g>
+            <g class="st res" data-s="8"><path d="M255,172 L153,172"/></g>
+            <circle r="5" id="packet" class="s-dot" cx="-20" cy="-20"/>
+          </svg>
+        </div>
+        <div class="ctrl">
+          <div class="seg" role="group" aria-label="Step controls">
+            <button type="button" id="stPrev" aria-label="Previous step">◀ Back</button>
+            <button type="button" id="stPlay" aria-pressed="false">▶ Play</button>
+            <button type="button" id="stNext" aria-label="Next step">Next ▶</button>
+          </div>
+          <span class="count" id="stCount">Step 1 / 8</span>
+        </div>
+        <p class="step-text" id="stText" aria-live="polite"></p>
+        <figcaption><b>Figure 7.3</b> Interactive: one lookup, step by step. Teal arrows are queries, orange arrows are replies. Step 1 is a <b style="font-family:inherit;margin:0;color:inherit;font-weight:600">recursive</b> query; steps 2–7 are <b style="font-family:inherit;margin:0;color:inherit;font-weight:600">iterative</b>. Sequence from Microsoft’s “DNS Query Types” example;<a class="src" href="#s2">[2]</a> roles from DNSimple.<a class="src" href="#s4">[4]</a> The address <code>192.0.2.1</code> is from a documentation-only range.</figcaption>
+      </figure>
+
+      <h3 id="rec-iter">Recursive vs iterative</h3>
+      <div class="tablewrap">
+        <table>
+          <caption class="tcap"><b>Table 7.2</b> The two kinds of query</caption>
+          <thead><tr><th></th><th>Recursive query</th><th>Iterative query</th></tr></thead>
+          <tbody>
+            <tr><td><b>Server must…</b></td><td>Return the final answer or an error, asking other servers itself</td><td>Return the best it has locally: the answer, or a <b>referral</b></td></tr>
+            <tr><td><b>Referral</b></td><td>—</td><td>NS records for servers closer to the answer</td></tr>
+            <tr><td><b>Typically sent</b></td><td>Device → recursive resolver; resolver → its forwarder</td><td>Resolver → root, TLD and authoritative servers</td></tr>
+            <tr><td><b>In Figure 7.3</b></td><td>Steps 1 and 8</td><td>Steps 2–7</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:.82rem;color:var(--muted)">From Microsoft’s architecture page<a class="src" href="#s2">[2]</a> and DNSimple.<a class="src" href="#s4">[4]</a></p>
+      <p>A resolver can also be set up with a <b>forwarder</b>: another DNS server it passes unanswered questions to (as recursive queries) before trying the root itself.<a class="src" href="#s2">[2]</a></p>
+      <div class="callout tip"><span class="label">Common mix-up</span><p>People often say “my name server” when they mean their ISP’s or Google’s <i>recursive resolver</i>. An <i>authoritative</i> server only answers for the zones it hosts; a recursive resolver answers any question by asking others.<a class="src" href="#s4">[4]</a></p></div>
+      <div class="callout tip"><span class="label">Try it</span><p>The <code>dig</code> tool shows this on a real domain: <code>dig example.com</code> asks your configured resolver; <code>dig @ns1.example-dns.net example.com</code> asks one server directly; <code>dig +trace example.com</code> starts at the root and follows each referral, like steps 2–7.<a class="src" href="#s12">[12]</a> (Replace <code>ns1.example-dns.net</code> with a real NS name from the domain.)</p></div>
+    </section>
+
+    <!-- ===================== 7.3 ===================== -->
+    <section id="caching">
+      <h2><span class="num">7.3</span>Caching and TTL</h2>
+      <p>Walking the tree on every request would be slow, so answers are cached at several layers. Lower-level DNS servers cache mappings, and your <b>browser</b> and <b>OS</b> can cache results too.<a class="src" href="#s1">[1]</a> A hit at any layer ends the lookup early. Some browsers keep their own short cache, typically around a minute.<a class="src" href="#s3">[3]</a></p>
+
+      <h3 id="ttl">Time to live</h3>
+      <p>How long an answer may be cached is set by its <b>time to live (TTL)</b>, given in seconds and chosen by the zone’s owner for each record.<a class="src" href="#s1">[1]</a><a class="src" href="#s6">[6]</a><a class="src" href="#s7">[7]</a></p>
+      <ul>
+        <li>The resolver notes when it received a record and counts down. While the remaining TTL is above zero it answers from cache; at zero it drops the record and the next request goes back to the authoritative server.<a class="src" href="#s6">[6]</a></li>
+        <li>When a cached answer is passed on, it carries the <i>remaining</i> TTL, not the original, so copies further down expire on time too.<a class="src" href="#s2">[2]</a><a class="src" href="#s6">[6]</a></li>
+        <li><b>Negative caching</b>: “this name doesn’t exist” answers are cached as well, for a time taken from the zone’s SOA record.<a class="src" href="#s3">[3]</a><a class="src" href="#s7">[7]</a></li>
+      </ul>
+
+      <h3 id="propagation">Stale answers</h3>
+      <p>Because of caching, a change to a record doesn’t reach everyone at once: copies cached before the change keep being served until their TTL runs out. The primer calls this <b>DNS propagation delay</b>, and it is why cached mappings can become <b>stale</b>.<a class="src" href="#s1">[1]</a><a class="src" href="#s3">[3]</a> DNS is the primer’s example of <b>eventual consistency</b> from Unit 5 for this reason.</p>
+      <figure>
+        <div class="figwrap">
+          <svg viewBox="0 0 680 210" role="img" aria-labelledby="f4t">
+            <title id="f4t">Timeline of a cached record with a one-hour TTL. At minute 0 the resolver caches www.example.com as 192.0.2.1. At minute 20 the owner changes the record to 192.0.2.7, but until minute 60 the resolver keeps answering the old address. At minute 60 the TTL expires and the next lookup returns the new address.</title>
+            <!-- bands -->
+            <rect x="60" y="96" width="160" height="32" class="s-acc"/>
+            <rect x="220" y="96" width="320" height="32" class="s-warm"/>
+            <rect x="540" y="96" width="100" height="32" class="s-acc"/>
+            <text x="140" y="117" text-anchor="middle" class="s-ts" style="fill:var(--ink)">cached · correct</text>
+            <text x="380" y="117" text-anchor="middle" class="s-ts" style="fill:var(--ink)">stale: still answers 192.0.2.1</text>
+            <text x="590" y="117" text-anchor="middle" class="s-ts" style="fill:var(--ink)">new answer</text>
+            <!-- axis -->
+            <line x1="60" y1="140" x2="640" y2="140" class="s-line"/>
+            <g class="s-tm" text-anchor="middle">
+              <line x1="60" y1="136" x2="60" y2="144" class="s-line"/><text x="60" y="160">0</text>
+              <line x1="140" y1="136" x2="140" y2="144" class="s-line"/><text x="140" y="160">10</text>
+              <line x1="220" y1="136" x2="220" y2="144" class="s-line"/><text x="220" y="160">20</text>
+              <line x1="300" y1="136" x2="300" y2="144" class="s-line"/><text x="300" y="160">30</text>
+              <line x1="380" y1="136" x2="380" y2="144" class="s-line"/><text x="380" y="160">40</text>
+              <line x1="460" y1="136" x2="460" y2="144" class="s-line"/><text x="460" y="160">50</text>
+              <line x1="540" y1="136" x2="540" y2="144" class="s-line"/><text x="540" y="160">60</text>
+              <line x1="620" y1="136" x2="620" y2="144" class="s-line"/><text x="620" y="160">70</text>
+            </g>
+            <text x="350" y="188" text-anchor="middle" class="s-ts">minutes after the resolver cached the record</text>
+            <!-- events -->
+            <line x1="60" y1="40" x2="60" y2="96" class="s-dash"/>
+            <text x="66" y="30" class="s-tb">Resolver caches</text>
+            <text x="66" y="48" class="s-tm">A 192.0.2.1 · TTL 3600 s</text>
+            <line x1="220" y1="62" x2="220" y2="96" stroke="var(--warm)" stroke-width="1.6"/>
+            <text x="226" y="70" class="s-tb" style="fill:var(--warm)">Owner changes to 192.0.2.7</text>
+            <line x1="540" y1="40" x2="540" y2="96" class="s-dash"/>
+            <text x="534" y="30" text-anchor="end" class="s-tb">TTL hits 0</text>
+            <text x="534" y="48" text-anchor="end" class="s-tm">re-query → 192.0.2.7</text>
+          </svg>
+        </div>
+        <figcaption><b>Figure 7.4</b> Why stale answers happen. With a one-hour TTL, a change made 20 minutes after caching is invisible to this resolver’s users for the remaining 40 minutes. In the worst case the delay is a full TTL. Behaviour from DNSimple and Microsoft;<a class="src" href="#s2">[2]</a><a class="src" href="#s6">[6]</a> timings and addresses are illustrative.</figcaption>
+      </figure>
+
+      <h3 id="choosing-ttl">Choosing a TTL</h3>
+      <div class="prosCons">
+        <div class="pro"><h4>Low TTL (e.g. 300 s)</h4><ul>
+          <li>Changes spread quickly.<a class="src" href="#s6">[6]</a><a class="src" href="#s7">[7]</a></li>
+          <li>Used for key records in disaster-recovery set-ups.<a class="src" href="#s7">[7]</a></li>
+          <li><i>Cost:</i> more queries to the authoritative server and slower lookups for clients.<a class="src" href="#s6">[6]</a></li>
+        </ul></div>
+        <div class="con"><h4>High TTL (e.g. 86 400 s)</h4><ul>
+          <li>Efficient caching, less load and traffic.<a class="src" href="#s2">[2]</a><a class="src" href="#s6">[6]</a></li>
+          <li>A day was once a common default.<a class="src" href="#s7">[7]</a></li>
+          <li><i>Cost:</i> old answers linger longer after a change.<a class="src" href="#s2">[2]</a><a class="src" href="#s7">[7]</a></li>
+        </ul></div>
+      </div>
+      <p>The usual practice: <b>lower the TTL ahead of a planned change</b> (such as moving a web server or MX record), make the change, then raise it again, to at least an hour per DNSimple.<a class="src" href="#s6">[6]</a><a class="src" href="#s7">[7]</a> Microsoft advises against a TTL of <b>0</b>: it barely improves freshness over 60 seconds but forces constant re-queries.<a class="src" href="#s2">[2]</a> Note that some caching servers apply their own TTLs, so updates may not land exactly on time.<a class="src" href="#s7">[7]</a></p>
+    </section>
+
+    <!-- ===================== 7.4 ===================== -->
+    <section id="records">
+      <h2><span class="num">7.4</span>Record types</h2>
+      <p>A zone is a list of <b>resource records</b>. Each has a name, a <b>type</b>, a class (almost always <code>IN</code>, Internet), a TTL and type-specific data.<a class="src" href="#s3">[3]</a> The table is split in two: the four types the primer lists, then others that appear in its linked sources.</p>
+      <div class="tablewrap">
+        <table>
+          <caption class="tcap"><b>Table 7.3</b> Common record types</caption>
+          <thead><tr><th>Type</th><th>What it does</th><th>Points to</th></tr></thead>
+          <tbody>
+            <tr class="grp"><td colspan="3">Listed in the primer</td></tr>
+            <tr><td><b>A</b></td><td>Address: points a name to an IP address (IPv4)<a class="src" href="#s1">[1]</a></td><td>IPv4 address</td></tr>
+            <tr><td><b>CNAME</b></td><td>Canonical name: makes one name an alias of another name (which ends in an A record)<a class="src" href="#s1">[1]</a></td><td>Another name</td></tr>
+            <tr><td><b>MX</b></td><td>Mail exchange: the mail servers that accept messages for the domain<a class="src" href="#s1">[1]</a></td><td>Host name + priority</td></tr>
+            <tr><td><b>NS</b></td><td>Name server: the DNS servers for a domain or subdomain; used for delegation<a class="src" href="#s1">[1]</a><a class="src" href="#s5">[5]</a></td><td>Name server host name</td></tr>
+            <tr class="grp"><td colspan="3">From the linked sources</td></tr>
+            <tr><td><b>AAAA</b></td><td>Same as A, for IPv6<a class="src" href="#s5">[5]</a></td><td>IPv6 address</td></tr>
+            <tr><td><b>SOA</b></td><td>Start of authority: first record of a zone; primary server, serial number, refresh/retry/expire timers, minimum TTL<a class="src" href="#s2">[2]</a></td><td>Zone settings</td></tr>
+            <tr><td><b>TXT</b></td><td>Free text; used for email authentication and domain verification<a class="src" href="#s5">[5]</a></td><td>Text</td></tr>
+            <tr><td><b>PTR</b></td><td>Reverse lookup, IP → name, stored under <code>in-addr.arpa</code> (IPv4) or <code>ip6.arpa</code><a class="src" href="#s3">[3]</a></td><td>Host name</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Put together, a small zone file looks like this (illustrative values):</p>
+<pre><code><span class="c">; name               TTL    class type  data      ← comment line</span>
+example.com.         86400  IN    NS    ns1.example-dns.net.
+example.com.         86400  IN    NS    ns2.example-dns.net.
+example.com.         3600   IN    A     192.0.2.1
+example.com.         3600   IN    MX    10 mail.example.com.
+mail.example.com.    3600   IN    A     192.0.2.25
+www.example.com.     3600   IN    CNAME example.com.</code></pre>
+      <p>In a zone file, a <b>semicolon</b> (<code>;</code>) starts a <b>comment</b>: everything after it on the line is ignored.<a class="src" href="#s13">[13]</a> The first line is therefore not a record, just a note labelling the columns.</p>
+      <p style="font-size:.82rem;color:var(--muted)">Field layout as in DNSimple’s NS example;<a class="src" href="#s5">[5]</a> names and addresses from documentation-only ranges. SOA line omitted for brevity.</p>
+
+      <h3 id="cname">CNAME rules</h3>
+      <ul>
+        <li>The target must be a <b>name, not an IP</b>. The resolver follows the alias, then looks up the target’s address.<a class="src" href="#s5">[5]</a></li>
+        <li>The benefit: if the server’s IP changes, you update one A record and every alias follows.<a class="src" href="#s5">[5]</a></li>
+        <li>A name with a CNAME can’t hold <b>any other record</b>. Because the zone apex (<code>example.com</code> itself) needs NS and SOA records, a CNAME generally can’t be used there; some providers offer an ALIAS-style record for that case.<a class="src" href="#s5">[5]</a></li>
+        <li>CNAMEs can point to other CNAMEs, but each hop adds a lookup, so <b>chains</b> are discouraged.<a class="src" href="#s5">[5]</a></li>
+      </ul>
+      <div class="callout warn"><span class="label">About the primer’s example</span><p>The primer’s CNAME example reads “example.com to www.example.com”.<a class="src" href="#s1">[1]</a> Given the apex rule above, the usual set-up is the reverse: <code>www.example.com</code> is the CNAME and points to <code>example.com</code>, which holds the A record, as in DNSimple’s example and the zone file above.<a class="src" href="#s5">[5]</a></p></div>
+
+      <h3 id="mx">MX priority</h3>
+      <p>Each MX record carries a <b>priority</b> number. Sending servers try the <b>lowest number first</b> and move to higher ones if it fails; equal numbers may be tried in either order. The MX target must be a host name that itself has an A or AAAA record.<a class="src" href="#s5">[5]</a></p>
+    </section>
+
+    <!-- ===================== 7.5 ===================== -->
+    <section id="routing">
+      <h2><span class="num">7.5</span>Managed DNS and traffic routing</h2>
+      <p>Services such as <b>Cloudflare</b> and <b>Amazon Route 53</b> provide <b>managed DNS</b>: they run the authoritative servers for you. Some can also choose <i>which</i> answer to give, routing traffic in three ways.<a class="src" href="#s1">[1]</a> This ties back to Unit 6: for public-facing active-active servers, DNS is what knows both IPs.</p>
+
+      <h3 id="wrr">Weighted round robin</h3>
+      <p><b>Round robin</b> hands out servers in a fixed rotation. <b>Weighted</b> round robin gives each server a weight, usually in proportion to its capacity, and sends more traffic to higher weights: with weights 5 and 1, five requests go to the first server for every one to the second.<a class="src" href="#s9">[9]</a> The primer lists three uses for it in DNS:<a class="src" href="#s1">[1]</a></p>
+      <ul>
+        <li><b>Prevent traffic from going to servers under maintenance</b> (give them no weight).</li>
+        <li><b>Balance between varying cluster sizes</b> (a cluster twice as large gets twice the weight).</li>
+        <li><b>A/B testing</b> (send a small share of users to a new version).</li>
+      </ul>
+      <figure>
+        <div class="wrr" id="wrrBox">
+          <div class="wrr-servers">
+            <div><label for="wA">Server A <input id="wA" type="number" min="4" max="9" value="5"></label><small>Large cluster · weight 4–9</small></div>
+            <div><label for="wB">Server B <input id="wB" type="number" min="1" max="3" value="1"></label><small>Small cluster or test version · weight 1–3</small></div>
+            <div><label for="wC">Server C <input id="wC" type="number" min="1" max="9" value="3" disabled></label>
+              <small><label class="mnt"><input type="checkbox" id="mC" checked> Under maintenance</label><span id="cDesc">Weight forced to 0, so it gets no traffic</span></small></div>
+          </div>
+          <div class="out"><b>Next 12 DNS answers</b><div class="chips" id="wrrChips" aria-live="polite"></div></div>
+          <p class="hint" id="wrrShare"></p>
+        </div>
+        <figcaption><b>Figure 7.5</b> Interactive: change the weights and see which server each of the next 12 lookups is pointed to. The ordering follows JSCAPE’s 5 : 1 example (each server takes as many turns in a row as its weight);<a class="src" href="#s9">[9]</a> it illustrates the idea, not any one provider’s exact algorithm.</figcaption>
+      </figure>
+
+      <h3 id="latency">Latency-based routing</h3>
+      <p>In Route 53, you create one record per region where your application runs. For each query, Route 53 picks the region with the <b>lowest latency for that user</b> and returns that region’s address.<a class="src" href="#s8">[8]</a></p>
+      <ul>
+        <li><i>Example:</i> with load balancers in Oregon and Singapore, a user in London gets whichever has lower London latency.<a class="src" href="#s8">[8]</a></li>
+        <li>Latency is measured between users and <b>AWS data centers</b>, not your servers, and collected over time, so the same user might be sent to Oregon one week and Singapore the next.<a class="src" href="#s8">[8]</a></li>
+      </ul>
+
+      <h3 id="geo">Geolocation-based routing</h3>
+      <p>Here the answer depends on <b>where the query comes from</b>, by continent, country, or U.S. state. For example, all queries from Europe can go to a load balancer in Frankfurt.<a class="src" href="#s8">[8]</a></p>
+      <ul>
+        <li>When locations overlap, the <b>smallest region wins</b> (a Canada record beats a North America record for Canadian users).<a class="src" href="#s8">[8]</a></li>
+        <li>Some IPs can’t be placed on a map, so a <b>default record</b> is needed; without one, those users get no answer.<a class="src" href="#s8">[8]</a></li>
+        <li>Uses: <b>localise</b> content (language), <b>restrict</b> content to regions where you have distribution rights, and keep load <b>predictable</b>.<a class="src" href="#s8">[8]</a></li>
+      </ul>
+
+      <div class="tablewrap">
+        <table>
+          <caption class="tcap"><b>Table 7.4</b> Three ways DNS can route</caption>
+          <thead><tr><th></th><th>Weighted round robin</th><th>Latency-based</th><th>Geolocation-based</th></tr></thead>
+          <tbody>
+            <tr><td><b>Chooses by</b></td><td>Weights you assign</td><td>Measured network latency</td><td>User’s location</td></tr>
+            <tr><td><b>Good for</b></td><td>Maintenance, uneven clusters, A/B tests</td><td>Fastest response across regions</td><td>Localisation, distribution rights, predictable load</td></tr>
+            <tr><td><b>Watch out</b></td><td>Weights don’t track live load</td><td>Choice can change as latency data changes</td><td>Needs a default record</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:.82rem;color:var(--muted)">Uses from the primer;<a class="src" href="#s1">[1]</a> behaviour from Route 53’s docs<a class="src" href="#s8">[8]</a> and JSCAPE.<a class="src" href="#s9">[9]</a> The weighted “watch out” row follows from JSCAPE: weights are set ahead of time from capacity.<a class="src" href="#s9">[9]</a></p>
+      <div class="callout tip"><span class="label">Keep in mind</span><p>A routed answer is cached like any other answer, for its TTL (7.3). Moving users between servers through DNS therefore takes effect only as caches expire, which is one reason low TTLs are used for records that may need to change quickly.<a class="src" href="#s7">[7]</a></p></div>
+    </section>
+
+    <!-- ===================== 7.6 ===================== -->
+    <section id="cons">
+      <h2><span class="num">7.6</span>Disadvantages</h2>
+      <div class="prosCons">
+        <div class="con"><h4>Disadvantages: DNS</h4><ul>
+          <li>Contacting a DNS server adds a <b>slight delay</b>, though caching reduces it.<a class="src" href="#s1">[1]</a></li>
+          <li>DNS server <b>management can be complex</b>; it is generally handled by governments, ISPs and large companies.<a class="src" href="#s1">[1]</a></li>
+          <li>DNS services have been hit by <b>DDoS attacks</b>, leaving users unable to reach sites such as Twitter if they don’t know the site’s IP address.<a class="src" href="#s1">[1]</a></li>
+        </ul></div>
+      </div>
+
+      <h3 id="ddos">DDoS: the Dyn attack</h3>
+      <p>The primer’s example is the attack on the DNS provider <b>Dyn</b> on <b>21 October 2016</b>.<a class="src" href="#s1">[1]</a> Three waves of <b>distributed denial-of-service</b> traffic came from Internet-of-Things devices, such as cameras, home routers and baby monitors, infected with the <b>Mirai</b> malware. Dyn reported malicious requests from tens of millions of IP addresses. Sites using Dyn for DNS, including Twitter, Netflix, GitHub, Reddit and PayPal, became unreachable for many users in Europe and North America.<a class="src" href="#s11">[11]</a></p>
+      <p>The sites’ own servers were running; what failed was the step that turns their names into addresses. This makes DNS a dependency every service shares, and a provider outage affects all of its customers at once.</p>
+
+      <h3 id="security">Security, briefly</h3>
+      <p>Beyond the primer’s scope, but useful context from Wikipedia:<a class="src" href="#s3">[3]</a></p>
+      <ul>
+        <li>Classic DNS travels <b>unencrypted</b> (UDP port 53, TCP for large answers and zone transfers), exposing it to eavesdropping and <b>cache poisoning</b>, where forged answers are planted in a resolver’s cache.</li>
+        <li><b>DNSSEC</b> adds cryptographic signatures so answers can be verified.</li>
+        <li><b>DNS over TLS</b> (TCP port 853) and <b>DNS over HTTPS</b> (port 443) encrypt queries.</li>
+      </ul>
+      <div class="callout tip"><span class="label">In an interview</span><p>DNS is the first hop of every request. Mention the TTL trade-off when you plan fail-over or a migration, and that managed DNS can split traffic by weight, latency or location before any load balancer (Unit 9) is involved.</p></div>
+    </section>
+
+    <!-- ===================== 7.7 ===================== -->
+    <section id="resources">
+      <h2><span class="num">7.7</span>Resources</h2>
+      <div class="res">
+        <a href="https://github.com/donnemartin/system-design-primer#domain-name-system"><b>Primer: Domain name system</b><span>The source section for this unit</span></a>
+        <a href="https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2008-R2-and-2008/dd197427(v=ws.10)"><b>DNS Architecture</b><span>Microsoft; namespace, zones, transfers, query types, TTL</span></a>
+        <a href="https://en.wikipedia.org/wiki/Domain_Name_System"><b>Domain Name System</b><span>Wikipedia; history, message format, record fields, security</span></a>
+        <a href="https://support.dnsimple.com/categories/dns/"><b>DNSimple: DNS articles</b><span>Short explainers for every record type, TTL and resolvers</span></a>
+        <a href="https://support.dnsimple.com/articles/how-dig/"><b>How to use dig</b><span>DNSimple; query and trace lookups yourself</span></a>
+        <a href="https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy.html"><b>Route 53 routing policies</b><span>AWS; weighted, latency, geolocation and more</span></a>
+        <a href="unit6.html"><b>Unit 6 · Availability patterns</b><span>Active-active fail-over relies on DNS</span></a>
+        <a href="https://github.com/donnemartin/system-design-primer#content-delivery-network"><b>Next: Content delivery network</b><span>DNS sends users to nearby CDN servers (Unit 8)</span></a>
+      </div>
+    </section>
+
+    <!-- ===================== 7.8 ===================== -->
+    <section id="sources">
+      <h2><span class="num">7.8</span>Sources</h2>
+      <ol class="sources">
+        <li id="s1">D. Martin et al., <a href="https://github.com/donnemartin/system-design-primer#domain-name-system">The System Design Primer: Domain name system</a>, GitHub. Figure 7.1 from its <code>images/</code> folder, credited there to a <a href="http://www.slideshare.net/srikrupa5/dns-security-presentation-issa">DNS security presentation</a> (SlideShare).</li>
+        <li id="s2">Microsoft, <a href="https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2008-R2-and-2008/dd197427(v=ws.10)">DNS Architecture</a>, Windows Server 2008 documentation (archived; the primer’s TechNet link redirects here).</li>
+        <li id="s3">Wikipedia, <a href="https://en.wikipedia.org/wiki/Domain_Name_System">Domain Name System</a>.</li>
+        <li id="s4">DNSimple, <a href="https://support.dnsimple.com/articles/what-is-dns/">What Is DNS?</a> and <a href="https://support.dnsimple.com/articles/recursive-vs-authoritative-dns-resolvers/">Recursive vs Authoritative DNS Resolvers</a>, from the primer’s <a href="https://support.dnsimple.com/categories/dns/">DNS articles</a> link.</li>
+        <li id="s5">DNSimple, <a href="https://support.dnsimple.com/articles/common-dns-records/">Common DNS Records</a>, <a href="https://support.dnsimple.com/articles/cname-record/">What Is a CNAME Record?</a>, <a href="https://support.dnsimple.com/articles/mx-record/">What Is an MX Record?</a> and <a href="https://support.dnsimple.com/articles/ns-record/">What Is an NS Record?</a></li>
+        <li id="s6">DNSimple, <a href="https://support.dnsimple.com/articles/what-is-ttl/">What Is Time-to-Live?</a></li>
+        <li id="s7">Wikipedia, <a href="https://en.wikipedia.org/wiki/Time_to_live">Time to live</a> (linked from the primer’s TTL mention).</li>
+        <li id="s8">Amazon Web Services, Route 53 Developer Guide: <a href="https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy-latency.html">Latency-based routing</a> and <a href="https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy-geo.html">Geolocation routing</a> (linked from the primer).</li>
+        <li id="s9">JSCAPE, <a href="https://www.jscape.com/blog/load-balancing-algorithms">Load balancing algorithms</a> (linked from the primer’s “weighted round robin”).</li>
+        <li id="s10">Wikipedia, <a href="https://en.wikipedia.org/wiki/Root_name_server">Root name server</a> (outside source, used in place of the primer’s <a href="http://superuser.com/questions/472695/who-controls-the-dns-servers/472729">Super User answer</a>, which could not be accessed).</li>
+        <li id="s11">Wikipedia, <a href="https://en.wikipedia.org/wiki/2016_Dyn_cyberattack">2016 Dyn cyberattack</a> (outside source, used in place of the primer’s <a href="http://dyn.com/blog/dyn-analysis-summary-of-friday-october-21-attack/">Dyn analysis</a>, which now redirects away and could not be accessed).</li>
+        <li id="s12">DNSimple, <a href="https://support.dnsimple.com/articles/how-dig/">How to Use dig</a>.</li>
+        <li id="s13">P. Mockapetris, <a href="https://www.rfc-editor.org/rfc/rfc1035#section-5.1">RFC 1035: Domain Names, Implementation and Specification</a>, §5.1 Master files, IETF, 1987 (outside source, for zone file comment syntax).</li>
+      </ol>
+    </section>
+  </main>
+</div>
+
+<aside class="note" id="notePanel" role="dialog" aria-labelledby="noteTitle" hidden>
+  <div class="note-head"><strong id="noteTitle">Key terms · Unit 7</strong><button id="noteClose" aria-label="Close key terms">×</button></div>
+  <h5>Basics</h5>
+  <dl>
+    <dt>DNS</dt><dd>Hierarchical, distributed system translating names to IP addresses.</dd>
+    <dt>Resolution</dt><dd>The act of turning a name into an address.</dd>
+    <dt>HOSTS file</dt><dd>Pre-DNS single list of all hosts; didn’t scale.</dd>
+  </dl>
+  <h5>Namespace</h5>
+  <dl>
+    <dt>Root · TLD</dt><dd>Top of the tree (“.”) · first level, e.g. com, vn.</dd>
+    <dt>Second-level · subdomain · host</dt><dd>example.com · shop.example.com · www.</dd>
+    <dt>FQDN</dt><dd>Full name to the root, ending in a dot.</dd>
+    <dt>Registrar</dt><dd>Where you register a domain and set its name servers.</dd>
+    <dt>Zone</dt><dd>Part of the tree stored together; its server is authoritative.</dd>
+    <dt>Delegation</dt><dd>Parent’s NS records hand a subtree to other servers.</dd>
+    <dt>Primary · secondary zone</dt><dd>Writable copy · read-only copy synced by zone transfer.</dd>
+    <dt>AXFR · IXFR</dt><dd>Full · incremental zone transfer.</dd>
+    <dt>Anycast</dt><dd>One address served from many locations (root servers).</dd>
+  </dl>
+  <h5>Resolution</h5>
+  <dl>
+    <dt>Stub resolver</dt><dd>DNS client on your device.</dd>
+    <dt>Recursive resolver</dt><dd>Does all lookups for you (ISP, 8.8.8.8, 1.1.1.1).</dd>
+    <dt>Authoritative server</dt><dd>Holds a zone’s official records.</dd>
+    <dt>Recursive · iterative query</dt><dd>Must give final answer · gives best local answer or referral.</dd>
+    <dt>Referral</dt><dd>NS records pointing closer to the answer.</dd>
+    <dt>Root hints · forwarder</dt><dd>Built-in root list · server a resolver hands queries to.</dd>
+  </dl>
+  <h5>Caching</h5>
+  <dl>
+    <dt>TTL</dt><dd>Seconds an answer may be cached; counts down.</dd>
+    <dt>Propagation delay</dt><dd>Old cached answers served until their TTL expires.</dd>
+    <dt>Negative caching</dt><dd>Caching “name doesn’t exist” answers.</dd>
+  </dl>
+  <h5>Records</h5>
+  <dl>
+    <dt>A · AAAA</dt><dd>Name → IPv4 · IPv6.</dd>
+    <dt>CNAME</dt><dd>Alias to another name; nothing else on that name.</dd>
+    <dt>MX</dt><dd>Mail servers; lowest priority number tried first.</dd>
+    <dt>NS · SOA</dt><dd>Zone’s name servers · zone’s admin settings.</dd>
+    <dt>TXT · PTR</dt><dd>Free text · reverse (IP → name).</dd>
+  </dl>
+  <h5>Routing & risks</h5>
+  <dl>
+    <dt>Managed DNS</dt><dd>Provider runs your authoritative DNS (Cloudflare, Route 53).</dd>
+    <dt>Weighted round robin</dt><dd>Rotation skewed by weights; 0 = out of rotation.</dd>
+    <dt>Latency · geolocation routing</dt><dd>Answer by lowest latency · by user location.</dd>
+    <dt>DDoS</dt><dd>Flood from many machines; Dyn 2016 via Mirai botnet.</dd>
+    <dt>Cache poisoning · DNSSEC</dt><dd>Forged cached answers · signed answers.</dd>
+  </dl>
+</aside>
+
+<button class="fab" id="notesBtn" aria-label="Show key terms" aria-expanded="false" aria-controls="notePanel" title="Key terms">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M5 3h10l4 4v14H5z"/><path d="M15 3v4h4"/><path d="M8 11h8M8 15h8M8 19h5"/></svg>
+</button>
+<button class="fab hide" id="toTop" aria-label="Return to top" title="Return to top">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+</button>
+
+<script>
+(function(){
+  const links = Array.from(document.querySelectorAll('.toc a'));
+  const targets = links.map(a => document.getElementById(a.getAttribute('href').slice(1))).filter(Boolean);
+  const toc = document.getElementById('toc');
+  const toggle = document.getElementById('tocToggle');
+  const current = document.getElementById('tocCurrent');
+  const toTop = document.getElementById('toTop');
+  const mq = window.matchMedia('(max-width: 960px)');
+
+  function syncToc(){ if(!mq.matches){ toc.hidden = false; } else if(toggle.getAttribute('aria-expanded') !== 'true'){ toc.hidden = true; } }
+  syncToc(); mq.addEventListener ? mq.addEventListener('change', syncToc) : mq.addListener(syncToc);
+
+  toggle.addEventListener('click', () => {
+    const open = toggle.getAttribute('aria-expanded') === 'true';
+    toggle.setAttribute('aria-expanded', String(!open)); toc.hidden = open;
+  });
+  links.forEach(a => a.addEventListener('click', () => {
+    if(mq.matches){ toggle.setAttribute('aria-expanded','false'); toc.hidden = true; }
+  }));
+
+  function spy(){
+    const offset = mq.matches ? 90 : 40;
+    let idx = 0;
+    targets.forEach((t, i) => { if(t.getBoundingClientRect().top - offset <= 0) idx = i; });
+    if(window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) idx = targets.length - 1;
+    links.forEach(a => a.classList.remove('active','parent-active'));
+    const a = links[idx]; if(!a) return;
+    a.classList.add('active');
+    const parentLi = a.closest('ol').closest('li');
+    if(parentLi){ parentLi.querySelector(':scope > a').classList.add('parent-active'); }
+    current.textContent = a.textContent.replace(/^\d\.\d/, m => m + ' ');
+    if(!mq.matches){
+      const r = a.getBoundingClientRect(), rail = document.querySelector('.rail').getBoundingClientRect();
+      if(r.top < rail.top + 40 || r.bottom > rail.bottom - 40){ a.scrollIntoView({block:'nearest'}); }
+    }
+    toTop.classList.toggle('hide', window.scrollY < 500);
+  }
+  let ticking = false;
+  window.addEventListener('scroll', () => { if(!ticking){ requestAnimationFrame(() => { spy(); ticking = false; }); ticking = true; } }, {passive:true});
+  spy();
+
+  toTop.addEventListener('click', () => window.scrollTo({top:0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'}));
+
+  const panel = document.getElementById('notePanel'), btn = document.getElementById('notesBtn');
+  function setNote(open){ panel.hidden = !open; btn.setAttribute('aria-expanded', String(open)); }
+  btn.addEventListener('click', () => setNote(panel.hidden));
+  document.getElementById('noteClose').addEventListener('click', () => { setNote(false); btn.focus(); });
+  document.addEventListener('keydown', e => { if(e.key === 'Escape' && !panel.hidden){ setNote(false); btn.focus(); } });
+})();
+</script>
+<script>
+(function(){
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- Figure 7.3: resolution stepper ---------- */
+  const STEPS = [
+    {route:'device → resolver', body:'A? www.example.com', kind:'recursive query',
+     text:'<b>1 · Recursive query.</b> Your device’s stub resolver asks its configured recursive resolver for the A record of <code>www.example.com</code> and expects a final answer.'},
+    {route:'resolver → root', body:'A? www.example.com', kind:'iterative query',
+     text:'<b>2 · Iterative query to the root.</b> The resolver has nothing cached, so it starts at a root server, found through its root hints.'},
+    {route:'root → resolver', body:'referral: NS for com.', kind:'referral',
+     text:'<b>3 · Referral.</b> The root server doesn’t know the address, but returns the NS records of the <code>.com</code> TLD servers.'},
+    {route:'resolver → TLD', body:'A? www.example.com', kind:'iterative query',
+     text:'<b>4 · Iterative query to the TLD.</b> The resolver asks a <code>.com</code> server.'},
+    {route:'TLD → resolver', body:'referral: NS for example.com.', kind:'referral',
+     text:'<b>5 · Referral.</b> The <code>.com</code> server returns the NS records for <code>example.com</code>, the delegation set up at the registrar.'},
+    {route:'resolver → authoritative', body:'A? www.example.com', kind:'iterative query',
+     text:'<b>6 · Iterative query to the authoritative server.</b> The resolver asks one of <code>example.com</code>’s name servers.'},
+    {route:'authoritative → resolver', body:'A 192.0.2.1  TTL 3600', kind:'answer',
+     text:'<b>7 · Authoritative answer.</b> The server holds the zone, so it returns the record itself, with its TTL.'},
+    {route:'resolver → device', body:'A 192.0.2.1', kind:'answer',
+     text:'<b>8 · Answer to the device.</b> The resolver caches the record for its TTL and completes the original recursive query. The next user asking for the same name within the hour skips steps 2–7.'}
+  ];
+  const svg = document.getElementById('resolveSvg');
+  const groups = Array.from(svg.querySelectorAll('.st'));
+  const packet = document.getElementById('packet');
+  const msgStep = document.getElementById('msgStep'), msgRoute = document.getElementById('msgRoute'), msgBody = document.getElementById('msgBody');
+  const cacheLine = document.getElementById('cacheLine');
+  const stText = document.getElementById('stText'), stCount = document.getElementById('stCount');
+  const prev = document.getElementById('stPrev'), next = document.getElementById('stNext'), play = document.getElementById('stPlay');
+  let cur = 0, timer = null, raf = null;
+
+  function animatePacket(path, isRes){
+    cancelAnimationFrame(raf);
+    packet.setAttribute('class', isRes ? 's-dot2' : 's-dot');
+    const len = path.getTotalLength();
+    if(reduce){ const p = path.getPointAtLength(len); packet.setAttribute('cx', p.x); packet.setAttribute('cy', p.y); return; }
+    const t0 = performance.now(), dur = 900;
+    (function frame(now){
+      const k = Math.min(1, (now - t0)/dur);
+      const p = path.getPointAtLength(len * k);
+      packet.setAttribute('cx', p.x); packet.setAttribute('cy', p.y);
+      if(k < 1) raf = requestAnimationFrame(frame);
+    })(t0);
+  }
+  function show(i){
+    cur = Math.max(0, Math.min(STEPS.length - 1, i));
+    const s = STEPS[cur];
+    groups.forEach((g, gi) => {
+      const p = g.querySelector('path');
+      g.classList.toggle('on', gi === cur);
+      g.classList.toggle('done', gi < cur);
+      const res = g.classList.contains('res');
+      p.setAttribute('marker-end', gi === cur ? (res ? 'url(#mW)' : 'url(#mA)') : 'url(#mM)');
+    });
+    msgStep.textContent = 'STEP ' + (cur + 1) + ' OF 8 · ' + s.kind.toUpperCase();
+    msgRoute.textContent = s.route;
+    msgBody.textContent = s.body;
+    cacheLine.textContent = cur === 7 ? 'www.example.com → 192.0.2.1 (expires in 3600 s)' : '(empty)';
+    stText.innerHTML = s.text;
+    stCount.textContent = 'Step ' + (cur + 1) + ' / 8';
+    prev.disabled = cur === 0; next.disabled = cur === STEPS.length - 1;
+    const g = groups[cur]; animatePacket(g.querySelector('path'), g.classList.contains('res'));
+  }
+  function stop(){ clearInterval(timer); timer = null; play.textContent = '▶ Play'; play.setAttribute('aria-pressed','false'); }
+  prev.addEventListener('click', () => { stop(); show(cur - 1); });
+  next.addEventListener('click', () => { stop(); show(cur + 1); });
+  play.addEventListener('click', () => {
+    if(timer){ stop(); return; }
+    if(cur === STEPS.length - 1) show(0);
+    play.textContent = '❚❚ Pause'; play.setAttribute('aria-pressed','true');
+    timer = setInterval(() => { if(cur >= STEPS.length - 1){ stop(); return; } show(cur + 1); }, 2600);
+  });
+  show(0);
+
+  /* ---------- Figure 7.5: weighted round robin ---------- */
+  const ids = ['A','B','C'];
+  const inputs = ids.map(k => document.getElementById('w' + k));
+  const mC = document.getElementById('mC'), cDesc = document.getElementById('cDesc');
+  const chips = document.getElementById('wrrChips'), share = document.getElementById('wrrShare');
+  function clampVal(el){ const lo = +el.min, hi = +el.max; let v = parseInt(el.value, 10); if(isNaN(v)) v = lo; return Math.max(lo, Math.min(hi, v)); }
+  function wrr(){
+    const w = inputs.map(clampVal);
+    if(mC.checked) w[2] = 0;
+    inputs[2].disabled = mC.checked;
+    cDesc.textContent = mC.checked ? 'Weight forced to 0, so it gets no traffic' : 'Back in rotation · weight 1–9';
+    const cycle = [];
+    ids.forEach((k, i) => { for(let j = 0; j < w[i]; j++) cycle.push(k); });
+    chips.innerHTML = '';
+    for(let n = 0; n < 12; n++){
+      const k = cycle[n % cycle.length];
+      const c = document.createElement('span'); c.className = 'chip ' + k; c.textContent = k; chips.appendChild(c);
+    }
+    const total = w.reduce((a, b) => a + b, 0);
+    share.textContent = 'Long-run share: ' + ids.map((k, i) => k + ' ' + Math.round(100 * w[i] / total) + '%').join(' · ') + '.';
+  }
+  inputs.forEach(el => el.addEventListener('change', () => { el.value = clampVal(el); wrr(); }));
+  mC.addEventListener('change', wrr);
+  inputs.forEach(el => el.addEventListener('input', wrr)); wrr();
+})();
+</script>
+
+</body>
+</html>
