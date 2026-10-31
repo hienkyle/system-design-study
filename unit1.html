@@ -184,6 +184,10 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
   :root:not([data-theme="light"]) .theme-btn .i-moon{display:none}
 }
 .rail-actions{display:flex;align-items:center;gap:8px;min-width:0}
+.cite{font-size:.72em;vertical-align:super;line-height:0;font-family:var(--mono);margin-left:2px;color:var(--muted);white-space:nowrap}
+.cite a{text-decoration:none;color:var(--accent)}
+.fine{font-size:.85rem;color:var(--muted)}
+.s-in{stroke:var(--accent);stroke-width:1.6;fill:none}
 </style>
 <script>(function(){try{var t=localStorage.getItem('sysdes-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 </head>
@@ -201,29 +205,51 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
     </div>
     <nav class="toc" id="toc" hidden>
       <ol>
-        <li><a href="#step-1"><span class="num">1.1</span>Scaling a web app, one tier at a time</a>
+        <li><a href="#vertical"><span class="num">1.1</span>One bigger machine</a></li>
+        <li><a href="#horizontal"><span class="num">1.2</span>Many identical servers</a>
           <ol>
-            <li><a href="#vertical">Vertical scaling</a></li>
-            <li><a href="#horizontal">Horizontal scaling &amp; load balancing</a></li>
-            <li><a href="#sessions">Sessions &amp; sticky sessions</a></li>
+            <li><a href="#load-balancer">The load balancer</a></li>
+            <li><a href="#clones">Clones</a></li>
+          </ol>
+        </li>
+        <li><a href="#state"><span class="num">1.3</span>Keeping user state off the servers</a>
+          <ol>
+            <li><a href="#shared-store">A shared session store</a></li>
+            <li><a href="#sticky">Sticky sessions</a></li>
             <li><a href="#raid">RAID</a></li>
-            <li><a href="#lecture-caching">Caching</a></li>
-            <li><a href="#replication">Database replication</a></li>
-            <li><a href="#partitioning">Partitioning &amp; high availability</a></li>
-            <li><a href="#security">Security</a></li>
           </ol>
         </li>
-        <li><a href="#step-2"><span class="num">1.2</span>Clones, databases, caches &amp; async work</a>
+        <li><a href="#database"><span class="num">1.4</span>Scaling the database</a>
           <ol>
-            <li><a href="#clones">Part 1 · Clones</a></li>
-            <li><a href="#database">Part 2 · Database</a></li>
-            <li><a href="#cache">Part 3 · Cache</a></li>
-            <li><a href="#async">Part 4 · Asynchronism</a></li>
+            <li><a href="#replication">Replication</a></li>
+            <li><a href="#partitioning">Partitioning</a></li>
+            <li><a href="#db-paths">Two long-term paths</a></li>
+            <li><a href="#engines">Storage engines</a></li>
           </ol>
         </li>
-        <li><a href="#next-steps"><span class="num">1.3</span>Next steps</a></li>
-        <li><a href="#resources"><span class="num">1.4</span>Resources</a></li>
-        <li><a href="#sources"><span class="num">1.5</span>Sources</a></li>
+        <li><a href="#caching"><span class="num">1.5</span>Caching</a>
+          <ol>
+            <li><a href="#bytecode">Compiled code</a></li>
+            <li><a href="#static">Pre-rendered pages</a></li>
+            <li><a href="#query-cache">Query cache</a></li>
+            <li><a href="#in-memory">In-memory cache</a></li>
+            <li><a href="#what-to-cache">What to cache</a></li>
+          </ol>
+        </li>
+        <li><a href="#async"><span class="num">1.6</span>Moving slow work out of the request</a>
+          <ol>
+            <li><a href="#precompute">Do the work in advance</a></li>
+            <li><a href="#queues">Queue the work</a></li>
+          </ol>
+        </li>
+        <li><a href="#redundancy"><span class="num">1.7</span>Removing single points of failure</a>
+          <ol>
+            <li><a href="#security">Locking it down</a></li>
+          </ol>
+        </li>
+        <li><a href="#next-steps"><span class="num">1.8</span>Everything is a trade-off</a></li>
+        <li><a href="#resources"><span class="num">1.9</span>Resources</a></li>
+        <li><a href="#sources"><span class="num">1.10</span>Sources</a></li>
       </ol>
     </nav>
   </aside>
@@ -232,28 +258,31 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
     <header class="unit">
       <p class="eyebrow">SYSTEM DESIGN PRIMER · UNIT 1</p>
       <h1>Scaling fundamentals: from one server to many</h1>
-      <p class="lede">Before the individual topics, the primer asks you to build a basic picture of the common principles: what they are, how they are used, and their pros and cons. It does that in two steps: one lecture and one article series.<a class="src" href="#s1">[1]</a> This unit covers vertical vs horizontal scaling, load balancing and sticky sessions, RAID, caching, database replication and partitioning, and high availability and firewall basics, then the clone, database, cache and job-queue recipe from “Scalability for Dummies”.</p>
-      <div class="meta"><span>Step 1 · Harvard CS75 lecture</span><span>Step 2 · “Scalability for Dummies”</span><span>Then · high-level trade-offs</span></div>
+      <p class="lede">A web app that starts on one server eventually outgrows it. This unit follows that app as it grows: first onto a bigger machine, then onto many identical machines behind a load balancer, then through the database, cache and background-work changes that let those machines keep up, and finally to a layout where no single box can take the site down. Each step fixes one bottleneck and exposes the next.<span class="cite">[<a href="#s1">1</a>, <a href="#s2">2</a>, <a href="#s5">5</a>]</span></p>
+      <div class="meta"><span>Bigger machine</span><span>→ more machines</span><span>→ shared state</span><span>→ database</span><span>→ cache</span><span>→ background work</span><span>→ redundancy</span></div>
     </header>
 
     <!-- ===================== 1.1 ===================== -->
-    <section id="step-1">
-      <h2><span class="num">1.1</span>Scaling a web app, one tier at a time</h2>
-      <p>Based on <a href="https://www.youtube.com/watch?v=-W9F__D3oY4">Harvard CS75 Lecture 9: Scalability</a> (David Malan), Step 1 of the primer.<a class="src" href="#s2">[2]</a> The lecture grows a single web server into a redundant system, fixing one bottleneck at a time.<a class="src" href="#s5">[5]</a></p>
-
-      <h3 id="vertical">Vertical scaling</h3>
-      <p><b>Vertical scaling</b> means handling more load by buying a bigger machine: more or faster CPU cores, more RAM, more or faster disk.<a class="src" href="#s4">[4]</a> A single core works on one task at a time; more cores let a server truly run that many requests in parallel. For disks, server-class SAS drives spin faster than typical desktop SATA drives (15,000 RPM is cited), which is why write-heavy databases often sit on them, and SSDs are faster again because they have no moving parts.<a class="src" href="#s3">[3]</a></p>
+    <section id="vertical">
+      <h2><span class="num">1.1</span>One bigger machine</h2>
+      <p>The first response to growing traffic is usually <b>vertical scaling</b>: moving the app to a server with more or faster CPU cores, more RAM and more or faster disk.<span class="cite">[<a href="#s2">2</a>, <a href="#s4">4</a>]</span> Cores matter because a core works on one task at a time, so a quad-core server can genuinely handle four requests at once; extra processes or threads on one core only take turns.<span class="cite">[<a href="#s3">3</a>]</span> Disks matter most for the database. Server-class SAS drives spin faster than typical desktop SATA drives (15,000 RPM for fast SAS models), and SSDs, with no moving parts, are faster again.<span class="cite">[<a href="#s3">3</a>]</span></p>
       <div class="prosCons">
-        <div class="pro"><h4>Pros</h4><ul><li>Simplest to reason about: one machine</li><li>Data stays consistent in one place</li></ul></div>
+        <div class="pro"><h4>Pros</h4><ul><li>One machine is simple to run and reason about</li><li>All data stays in one place, so it stays consistent</li></ul></div>
         <div class="con"><h4>Cons</h4><ul><li>Hardware has a ceiling</li><li>Top-end hardware is expensive</li><li>The one machine is a single point of failure</li></ul></div>
       </div>
+      <p>All three drawbacks point to the same fix: add machines instead of enlarging one.</p>
+    </section>
 
-      <h3 id="horizontal">Horizontal scaling &amp; load balancing</h3>
-      <p><b>Horizontal scaling</b> means adding more machines of ordinary capability instead of one exceptional machine, and spreading traffic across them.<a class="src" href="#s4">[4]</a> As soon as there is more than one server, something has to decide where each request goes. That is the job of a <b>load balancer</b>.</p>
+    <!-- ===================== 1.2 ===================== -->
+    <section id="horizontal">
+      <h2><span class="num">1.2</span>Many identical servers</h2>
+      <p><b>Horizontal scaling</b> adds ordinary machines and spreads the traffic across them.<span class="cite">[<a href="#s2">2</a>, <a href="#s4">4</a>]</span> It needs two things: a component that decides which server handles each request, and servers that are interchangeable, so that it never matters which one is chosen.</p>
+
+      <h3 id="load-balancer">The load balancer</h3>
+      <p>A <b>load balancer</b> becomes the app’s single public entry point. The domain resolves to the balancer’s public IP address, and the back-end servers sit behind it on <b>private IP addresses</b>. This saves scarce IPv4 addresses and means the servers cannot be reached from outside except through the balancer.<span class="cite">[<a href="#s3">3</a>, <a href="#s4">4</a>]</span></p>
       <ul>
-        <li>The domain resolves to the load balancer’s public IP. Back-end servers can use <b>private IP addresses</b>, which saves scarce IPv4 addresses and keeps them unreachable from outside except through the balancer.<a class="src" href="#s3">[3]</a><a class="src" href="#s4">[4]</a></li>
-        <li>The balancer can send each request to the least busy server, or split work by content type (for example, images from one group of servers and HTML from another).<a class="src" href="#s3">[3]</a></li>
-        <li>Implementations exist in <b>software</b> (Amazon Elastic Load Balancer, HAProxy, Linux Virtual Server) and in more expensive <b>hardware</b> (Barracuda, Cisco, Citrix, F5).<a class="src" href="#s3">[3]</a></li>
+        <li>The balancer can send each request to the least busy server, or split traffic by content, for example images to one group of servers and HTML to another.<span class="cite">[<a href="#s3">3</a>]</span></li>
+        <li>Balancers come as <b>software</b> (Amazon Elastic Load Balancer, HAProxy, Linux Virtual Server) or as more expensive <b>hardware</b> appliances (Barracuda, Cisco, Citrix, F5).<span class="cite">[<a href="#s3">3</a>]</span></li>
       </ul>
       <figure>
         <div class="figwrap">
@@ -283,17 +312,50 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
             </g>
           </svg>
         </div>
-        <figcaption><b>Figure 1.1</b> Horizontal scaling behind a load balancer. The animated requests rotate across servers in round-robin order; only the balancer is publicly addressable.</figcaption>
+        <figcaption><b>Figure 1.1</b> Horizontal scaling behind a load balancer. Requests rotate across the servers in round-robin order, and only the balancer is publicly addressable.</figcaption>
       </figure>
       <h4>Round-robin DNS</h4>
-      <p>The cheapest way to balance is in DNS itself: the name server answers each lookup with the next IP address in a list (server 1, server 2, …), so clients talk to the back ends directly without a central balancer.<a class="src" href="#s4">[4]</a> It is not very smart. It ignores how busy each server is, and because DNS answers are cached for their <b>TTL</b> (time to live), one heavy user can keep landing on the same server long after the rotation has moved on.<a class="src" href="#s3">[3]</a></p>
+      <p>A cheaper alternative balances in DNS itself: the name server answers each lookup with the next IP address in a list, so clients connect to the back ends directly.<span class="cite">[<a href="#s2">2</a>, <a href="#s4">4</a>]</span> It is not very smart. DNS ignores how busy each server is, and because resolvers and browsers cache an answer for its <b>TTL</b> (time to live), traffic can keep piling onto one server after the rotation has moved on.<span class="cite">[<a href="#s3">3</a>]</span></p>
 
-      <h3 id="sessions">Sessions &amp; sticky sessions</h3>
-      <p>Horizontal scaling breaks sessions. By default, PHP keeps session data in files on the local disk of the server that handled the request. If the next request is balanced to a different server, that file isn’t there, and the user appears to be logged out.<a class="src" href="#s3">[3]</a> The lecture discusses two families of fixes:</p>
-      <ol>
-        <li><b>Share the state.</b> Factor sessions out into a service every server can reach, such as a shared file server or a database, so it no longer matters which server answers.<a class="src" href="#s4">[4]</a> This shared store then needs its own redundancy, which is where RAID and replication come in.</li>
-        <li><b>Make sessions sticky.</b> Send a returning user to the same back end every time (also called <b>session affinity</b>). The balancer can do this with a cookie: it sets one on the first response and reads it on later requests.<a class="src" href="#s4">[4]</a> Putting a server’s private IP in that cookie leaks internal addressing, so a better design stores a random identifier that only the balancer can map to a server.<a class="src" href="#s3">[3]</a></li>
-      </ol>
+      <h3 id="clones">Clones: interchangeable servers</h3>
+      <p>Behind a balancer, one user might be served by server 2, then server 9, then server 2 again, and must get the same result every time. That leads to a golden rule for scalable servers:<span class="cite">[<a href="#s5">5</a>, <a href="#s6">6</a>]</span></p>
+      <blockquote>every server contains exactly the same codebase and does not store any user-related data, like sessions or profile pictures, on local disc or memory<cite><span class="cite">[<a href="#s5">5</a>, <a href="#s6">6</a>]</span></cite></blockquote>
+      <ul>
+        <li><b>Same code everywhere.</b> A deployment must reach every server at once, so none keeps serving old code. Deployment tools such as Capistrano solve this, at the cost of some learning outside Ruby on Rails.<span class="cite">[<a href="#s5">5</a>, <a href="#s6">6</a>]</span></li>
+        <li><b>A “super-clone” image.</b> Once a server holds no user data, it can be captured as a machine image (on AWS, an <b>AMI</b>, Amazon Machine Image). Every new instance starts from that image and only needs the latest code deployed.<span class="cite">[<a href="#s5">5</a>, <a href="#s6">6</a>]</span></li>
+      </ul>
+      <figure>
+        <div class="figwrap">
+          <svg viewBox="0 0 640 200" role="img" aria-labelledby="f7t">
+            <title id="f7t">Identical clone servers, all started from one machine image, read and write sessions in one shared Redis store.</title>
+            <defs><marker id="ah5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="s-arrow"/></marker></defs>
+            <rect x="20" y="70" width="120" height="56" rx="8" class="s-warm"/><text x="80" y="95" text-anchor="middle" class="s-tb">Machine image</text><text x="80" y="113" text-anchor="middle" class="s-tm">AMI</text>
+            <g>
+              <rect x="215" y="20" width="160" height="40" rx="8" class="s-box"/><text x="295" y="45" text-anchor="middle" class="s-t">Clone 1 · same code</text>
+              <rect x="215" y="78" width="160" height="40" rx="8" class="s-box"/><text x="295" y="103" text-anchor="middle" class="s-t">Clone 2 · same code</text>
+              <rect x="215" y="136" width="160" height="40" rx="8" class="s-box"/><text x="295" y="161" text-anchor="middle" class="s-t">Clone 3 · same code</text>
+            </g>
+            <line x1="140" y1="90" x2="213" y2="40" class="s-dash" marker-end="url(#ah5)"/><line x1="140" y1="98" x2="213" y2="98" class="s-dash" marker-end="url(#ah5)"/><line x1="140" y1="106" x2="213" y2="156" class="s-dash" marker-end="url(#ah5)"/>
+            <text x="176" y="190" text-anchor="middle" class="s-ts">launch from image</text>
+            <rect x="470" y="70" width="150" height="56" rx="8" class="s-acc"/><text x="545" y="95" text-anchor="middle" class="s-tb">Session store</text><text x="545" y="113" text-anchor="middle" class="s-tm">Redis</text>
+            <line x1="375" y1="40" x2="468" y2="88" class="s-line"/><line x1="375" y1="98" x2="468" y2="98" class="s-line"/><line x1="375" y1="156" x2="468" y2="108" class="s-line"/>
+            <text x="420" y="190" text-anchor="middle" class="s-ts">no user data stays on a clone</text>
+          </svg>
+        </div>
+        <figcaption><b>Figure 1.2</b> Stateless clones launched from one machine image. The user data they need lives outside them, which is the subject of the next section.</figcaption>
+      </figure>
+    </section>
+
+    <!-- ===================== 1.3 ===================== -->
+    <section id="state">
+      <h2><span class="num">1.3</span>Keeping user state off the servers</h2>
+      <p>Sessions are usually the first thing that breaks. By default, PHP stores session data in files on the local disk of whichever server handled the request. If the next request is balanced to a different server, that file isn’t there, and the user appears to be logged out.<span class="cite">[<a href="#s3">3</a>]</span> There are two ways out.</p>
+
+      <h3 id="shared-store">A shared session store</h3>
+      <p>Move sessions into a store that every server can reach. This can be a file server that every web server writes its sessions to,<span class="cite">[<a href="#s2">2</a>, <a href="#s4">4</a>]</span> an external database, or an external <b>persistent cache</b> such as Redis, which performs better than a database for this job.<span class="cite">[<a href="#s5">5</a>, <a href="#s6">6</a>]</span> “External” means the store runs on its own machines in or near the same data centre, not on the app servers.<span class="cite">[<a href="#s5">5</a>, <a href="#s6">6</a>]</span> With sessions outside, it no longer matters which server answers, and the servers become true clones.</p>
+
+      <h3 id="sticky">Sticky sessions</h3>
+      <p>Alternatively, keep sessions local but send each returning user to the same server every time. This is called a <b>sticky session</b> or <b>session affinity</b>. The balancer usually achieves it with a cookie: it sets one on the first response and reads it on later requests.<span class="cite">[<a href="#s2">2</a>, <a href="#s4">4</a>]</span> Putting a server’s private IP in that cookie would leak internal addressing, so the cookie should carry an opaque identifier that only the balancer can map to a server.<span class="cite">[<a href="#s3">3</a>]</span></p>
       <figure>
         <div class="figwrap">
           <svg viewBox="0 0 640 230" role="img" aria-labelledby="f3t">
@@ -313,74 +375,38 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
             <line x1="320" y1="210" x2="556" y2="210" class="s-line" marker-end="url(#ah2)"/><text x="440" y="204" text-anchor="middle" class="s-ts">6 · 7f3a → Server 2 again</text>
           </svg>
         </div>
-        <figcaption><b>Figure 1.2</b> Sticky sessions with a load-balancer cookie. The cookie holds an opaque token, not the server’s IP. Modern balancers implement exactly this; AWS’s Application Load Balancer, for example, can generate its own stickiness cookie or follow one set by the application.<a class="src" href="#s10">[10]</a></figcaption>
+        <figcaption><b>Figure 1.3</b> Sticky sessions with a load-balancer cookie. Modern balancers work this way; AWS’s Application Load Balancer can generate its own stickiness cookie or follow one set by the application.<span class="cite">[<a href="#s11">11</a>]</span></figcaption>
       </figure>
+      <div class="callout tip"><span class="label">Trade-off</span><p>Stickiness is simple, but it ties each user to one machine. If that server crashes or is taken out for maintenance, the sessions it held are lost.<span class="cite">[<a href="#s12">12</a>]</span> A shared store avoids this, but it is now a component that must never lose data.</p></div>
 
-      <h3 id="raid">RAID</h3>
-      <p>To make a single server (such as the shared session store) survive disk failure, the lecture introduces <b>RAID</b>, a redundant array of independent disks: several drives combined using striping, mirroring or parity.<a class="src" href="#s4">[4]</a><a class="src" href="#s6">[6]</a></p>
+      <h3 id="raid">Protecting the shared store: RAID</h3>
+      <p>A central store needs to survive a dead disk. <b>RAID</b> (redundant array of independent disks) combines several drives using striping, mirroring or parity, so the store keeps working when a drive fails.<span class="cite">[<a href="#s2">2</a>, <a href="#s4">4</a>, <a href="#s7">7</a>]</span></p>
       <div class="tablewrap">
         <table>
-          <caption class="tcap"><b>Table 1.1</b> The RAID levels discussed in the lecture</caption>
+          <caption class="tcap"><b>Table 1.1</b> Common RAID levels</caption>
           <thead><tr><th>Level</th><th>How it works</th><th>Min. drives</th><th>Survives</th><th>Good for</th></tr></thead>
           <tbody>
             <tr><td>RAID 0</td><td>Striping: data split across drives</td><td>2</td><td>No failures</td><td>Speed only</td></tr>
-            <tr><td>RAID 1</td><td>Mirroring: identical copy on each drive</td><td>2</td><td>All but one drive</td><td>Redundancy; replace the dead drive and it rebuilds</td></tr>
-            <tr><td>RAID 5</td><td>Striping with distributed parity</td><td>3</td><td>1 drive</td><td>Redundancy with only one drive’s worth of overhead</td></tr>
+            <tr><td>RAID 1</td><td>Mirroring: identical copy on each drive</td><td>2</td><td>All but one drive</td><td>Redundancy; a replaced drive rebuilds from its mirror</td></tr>
+            <tr><td>RAID 5</td><td>Striping with distributed parity</td><td>3</td><td>1 drive</td><td>Redundancy with one drive’s worth of overhead</td></tr>
             <tr><td>RAID 6</td><td>Striping with two parity blocks</td><td>4</td><td>2 drives</td><td>Extra safety for large arrays</td></tr>
-            <tr><td>RAID 10</td><td>Mirrored pairs, then striped (1 + 0)</td><td>4</td><td>1 per mirrored pair</td><td>Speed and redundancy together</td></tr>
+            <tr><td>RAID 10</td><td>Mirrored pairs, then striped (1 + 0)</td><td>4</td><td>At least 1; up to one per mirrored pair</td><td>Speed and redundancy together</td></tr>
           </tbody>
         </table>
       </div>
-      <p style="font-size:.85rem;color:var(--muted)">Drive counts and fault tolerance are from the standard RAID level definitions.<a class="src" href="#s6">[6]</a> RAID protects against hardware failure only; it does not replace backups.</p>
+      <p class="fine">Drive counts and fault tolerance follow the standard RAID definitions.<span class="cite">[<a href="#s7">7</a>]</span> RAID protects against hardware failure only; it does not replace backups.<span class="cite">[<a href="#s7">7</a>]</span></p>
+    </section>
 
-      <h3 id="lecture-caching">Caching</h3>
-      <p>The lecture then looks at avoiding work the server has already done, at several levels.</p>
-      <h4>Bytecode caching (“PHP acceleration”)</h4>
-      <p>PHP normally re-parses and compiles each script on every request, then discards the result. An accelerator keeps the compiled form for reuse until the file changes; Python’s <code>.pyc</code> files follow the same idea.<a class="src" href="#s3">[3]</a> Today this is built into PHP as <b>OPcache</b>, which keeps precompiled bytecode in shared memory.<a class="src" href="#s7">[7]</a></p>
-      <h4>Generating static HTML</h4>
-      <p>A site can render dynamic pages once and save them as <code>.html</code> files, because web servers serve static files extremely fast. Craigslist is the lecture’s example. The costs are disk space, the same markup repeated in thousands of files, and pain when you later want to change the layout of every page.<a class="src" href="#s3">[3]</a><a class="src" href="#s4">[4]</a></p>
-      <h4>MySQL query cache</h4>
-      <p>MySQL could cache the results of identical queries.<a class="src" href="#s4">[4]</a></p>
-      <div class="callout warn"><span class="label">Changed since 2012</span><p>The MySQL query cache was deprecated in 5.7.20 and removed in MySQL 8.0, because it scaled poorly on busy multi-core servers.<a class="src" href="#s8">[8]</a> Learn the concept, but don’t plan on this feature.</p></div>
-      <h4>Memcached</h4>
-      <p><b>Memcached</b> is a separate in-memory cache server that stores whatever you put in it in RAM. Facebook relied on it heavily because its workload was mostly reads.<a class="src" href="#s3">[3]</a><a class="src" href="#s4">[4]</a> Since RAM is limited, the cache must expire entries; evicting the ones used least recently makes room for new data.<a class="src" href="#s3">[3]</a></p>
-      <figure>
-        <div class="figwrap">
-          <svg viewBox="0 0 640 120" role="img" aria-labelledby="f4t">
-            <title id="f4t">Relative read speed: disk is slowest, then MySQL, then MySQL query cache, then Memcached in RAM.</title>
-            <defs><linearGradient id="spd" x1="0" x2="1"><stop offset="0" stop-color="var(--warm)"/><stop offset="1" stop-color="var(--accent)"/></linearGradient></defs>
-            <rect x="30" y="54" width="580" height="10" rx="5" fill="url(#spd)"/>
-            <g class="s-t" text-anchor="middle">
-              <circle cx="60" cy="59" r="8" class="s-box"/><text x="60" y="35" class="s-tb">Files on disk</text>
-              <circle cx="235" cy="59" r="8" class="s-box"/><text x="235" y="35" class="s-tb">MySQL</text>
-              <circle cx="410" cy="59" r="8" class="s-box"/><text x="410" y="35" class="s-tb">MySQL query cache</text>
-              <circle cx="580" cy="59" r="8" class="s-box"/><text x="580" y="35" class="s-tb">Memcached (RAM)</text>
-            </g>
-            <text x="30" y="96" class="s-ts">slower reads</text><text x="610" y="96" text-anchor="end" class="s-ts">faster reads</text>
-          </svg>
-        </div>
-        <figcaption><b>Figure 1.3</b> Where a read is served from, ordered by speed as summarised from the lecture.<a class="src" href="#s3">[3]</a> The ordering is qualitative; no measured numbers are implied.</figcaption>
-      </figure>
-      <h4>Storage engines</h4>
-      <p>MySQL lets each table choose a <b>storage engine</b>, and the choice affects performance.</p>
-      <div class="tablewrap">
-        <table>
-          <caption class="tcap"><b>Table 1.2</b> MySQL storage engines named in the lecture</caption>
-          <thead><tr><th>Engine</th><th>Transactions</th><th>Locking</th><th>Typical use</th></tr></thead>
-          <tbody>
-            <tr><td>InnoDB</td><td>Yes (ACID)</td><td>Row-level</td><td>The default, general-purpose engine</td></tr>
-            <tr><td>MyISAM</td><td>No</td><td>Table-level</td><td>Read-only or read-mostly workloads</td></tr>
-            <tr><td>Archive</td><td>No</td><td>Row-level</td><td>Compact, unindexed tables for rarely read history or logs</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <p style="font-size:.85rem;color:var(--muted)">Engine properties from the MySQL 8.0 reference manual.<a class="src" href="#s9">[9]</a></p>
+    <!-- ===================== 1.4 ===================== -->
+    <section id="database">
+      <h2><span class="num">1.4</span>Scaling the database</h2>
+      <p>With stateless servers, the app can now handle thousands of concurrent requests. Then it slows down and finally breaks down again, and the cause is the database. The fixes here are more radical than adding clones.<span class="cite">[<a href="#s5">5</a>, <a href="#s6">6</a>]</span></p>
 
-      <h3 id="replication">Database replication</h3>
-      <p><b>Replication</b> means automatically keeping copies of the database on more than one server.<a class="src" href="#s4">[4]</a></p>
+      <h3 id="replication">Replication</h3>
+      <p><b>Replication</b> keeps automatic copies of the database on more than one server.<span class="cite">[<a href="#s2">2</a>, <a href="#s4">4</a>]</span></p>
       <ul>
-        <li><b>Master-slave.</b> Every write goes to the master, which replays it on one or more slaves, so each slave holds an identical copy. Reads can be load-balanced across the slaves, which suits read-heavy sites. If the master dies, a slave can be promoted, but until then writes have nowhere to go: the master is a single point of failure for writes.<a class="src" href="#s3">[3]</a><a class="src" href="#s4">[4]</a></li>
-        <li><b>Master-master.</b> Two masters each accept writes and replicate to each other, so losing either one still leaves a master.<a class="src" href="#s3">[3]</a><a class="src" href="#s4">[4]</a></li>
+        <li><b>Master-slave.</b> Every write goes to the master, which replays it on one or more slaves, so each slave holds an identical copy. Reads can be spread across the slaves, which suits read-heavy sites. If the master dies, a slave can be promoted, but until then writes have nowhere to go: the master is a single point of failure for writes.<span class="cite">[<a href="#s2">2</a>, <a href="#s3">3</a>, <a href="#s4">4</a>]</span></li>
+        <li><b>Master-master.</b> Two masters both accept writes and replicate to each other, so losing either one still leaves a master.<span class="cite">[<a href="#s2">2</a>, <a href="#s3">3</a>, <a href="#s4">4</a>]</span></li>
       </ul>
       <figure>
         <div class="figwrap">
@@ -405,97 +431,14 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
             <text x="495" y="64" text-anchor="middle" class="s-tm">reads + writes on either</text>
           </svg>
         </div>
-        <figcaption><b>Figure 1.4</b> The two replication topologies from the lecture. Both are covered in more depth in the primer’s Database unit.</figcaption>
+        <figcaption><b>Figure 1.4</b> The two replication layouts. Master-slave scales reads; master-master also keeps writes available when one master fails.</figcaption>
       </figure>
 
-      <h3 id="partitioning">Partitioning &amp; high availability</h3>
-      <p><b>Partitioning</b> splits data across servers instead of copying it. Early Facebook is the lecture’s example: each school network ran on its own servers, so adding a school meant adding servers, at the cost that users could at first only see their own network. Data can also be split by a property such as last name, with A–L on one database and M–Z on another.<a class="src" href="#s3">[3]</a></p>
-      <p><b>High availability</b> means a pair of machines watch each other through <b>heartbeats</b> (small periodic messages) and one takes over if the other goes quiet.<a class="src" href="#s3">[3]</a> Applied to the load balancer itself, which would otherwise be a new single point of failure:</p>
-      <ul>
-        <li><b>Active-active:</b> both balancers accept traffic; if one stops responding, the other takes over its IP and handles everything.<a class="src" href="#s3">[3]</a><a class="src" href="#s4">[4]</a></li>
-        <li><b>Active-passive:</b> one balancer handles traffic while the other waits, and is promoted only if the active one fails.<a class="src" href="#s4">[4]</a></li>
-      </ul>
-      <p>Repeat the idea at a larger scale and you get <b>global load balancing</b>, which routes users between whole data centres by region and availability.<a class="src" href="#s3">[3]</a></p>
-      <figure>
-        <div class="figwrap">
-          <svg viewBox="0 0 640 290" role="img" aria-labelledby="f6t">
-            <title id="f6t">Combined architecture: two load balancers exchanging heartbeats, three web servers, and a master-master database pair behind a second balancer pair.</title>
-            <defs><marker id="ah4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="s-arrow"/></marker></defs>
-            <text x="320" y="20" text-anchor="middle" class="s-ts">internet</text>
-            <line x1="320" y1="26" x2="320" y2="40" class="s-line"/>
-            <rect x="185" y="42" width="120" height="40" rx="8" class="s-acc"/><text x="245" y="67" text-anchor="middle" class="s-tb">LB 1</text>
-            <rect x="335" y="42" width="120" height="40" rx="8" class="s-acc"/><text x="395" y="67" text-anchor="middle" class="s-tb">LB 2</text>
-            <line x1="305" y1="62" x2="335" y2="62" class="s-dash"/>
-            <g class="anim"><circle r="4" class="s-dot2"><animateMotion dur="1.6s" repeatCount="indefinite" path="M305,62 L335,62 L305,62"/></circle></g>
-            <text x="320" y="98" text-anchor="middle" class="s-ts">heartbeat</text>
-            <rect x="60" y="120" width="130" height="40" rx="8" class="s-box"/><text x="125" y="145" text-anchor="middle" class="s-t">Web 1</text>
-            <rect x="255" y="120" width="130" height="40" rx="8" class="s-box"/><text x="320" y="145" text-anchor="middle" class="s-t">Web 2</text>
-            <rect x="450" y="120" width="130" height="40" rx="8" class="s-box"/><text x="515" y="145" text-anchor="middle" class="s-t">Web 3</text>
-            <line x1="245" y1="82" x2="125" y2="118" class="s-line" marker-end="url(#ah4)"/><line x1="265" y1="82" x2="298" y2="118" class="s-line" marker-end="url(#ah4)"/><line x1="375" y1="82" x2="342" y2="118" class="s-line" marker-end="url(#ah4)"/><line x1="395" y1="82" x2="515" y2="118" class="s-line" marker-end="url(#ah4)"/>
-            <rect x="185" y="186" width="120" height="34" rx="8" class="s-acc"/><text x="245" y="208" text-anchor="middle" class="s-t">LB 3</text>
-            <rect x="335" y="186" width="120" height="34" rx="8" class="s-acc"/><text x="395" y="208" text-anchor="middle" class="s-t">LB 4</text>
-            <line x1="125" y1="160" x2="230" y2="185" class="s-line" marker-end="url(#ah4)"/><line x1="320" y1="160" x2="320" y2="185" class="s-line"/><line x1="515" y1="160" x2="410" y2="185" class="s-line" marker-end="url(#ah4)"/>
-            <rect x="185" y="244" width="120" height="38" rx="8" class="s-warm"/><text x="245" y="268" text-anchor="middle" class="s-tb">DB master A</text>
-            <rect x="335" y="244" width="120" height="38" rx="8" class="s-warm"/><text x="395" y="268" text-anchor="middle" class="s-tb">DB master B</text>
-            <line x1="305" y1="263" x2="335" y2="263" class="s-line"/>
-            <line x1="245" y1="220" x2="245" y2="242" class="s-line" marker-end="url(#ah4)"/><line x1="395" y1="220" x2="395" y2="242" class="s-line" marker-end="url(#ah4)"/>
-          </svg>
-        </div>
-        <figcaption><b>Figure 1.5</b> Putting the lecture’s pieces together: redundant load balancers watching each other’s heartbeat, cloned web servers, and a master-master database pair, so no single box takes the site down.<a class="src" href="#s3">[3]</a></figcaption>
-      </figure>
+      <h3 id="partitioning">Partitioning</h3>
+      <p><b>Partitioning</b> splits data across servers instead of copying it. Early Facebook ran each school’s network on its own servers, so adding a school meant adding servers, at the cost that users could at first only see their own school’s network. Data can also be split by a property such as last name, with A–L on one database and M–Z on another.<span class="cite">[<a href="#s3">3</a>]</span></p>
 
-      <h3 id="security">Security</h3>
-      <p>The lecture ends by asking what traffic should be allowed into the data centre at all. The answer follows the <b>principle of least privilege</b>: a firewall opens only the ports each tier needs.<a class="src" href="#s3">[3]</a></p>
-      <div class="tablewrap">
-        <table>
-          <caption class="tcap"><b>Table 1.3</b> Firewall rules discussed in the lecture</caption>
-          <thead><tr><th>Port</th><th>Protocol</th><th>Where it should be open</th></tr></thead>
-          <tbody>
-            <tr><td><code>TCP 80</code></td><td>HTTP</td><td>From the internet to the load balancer</td></tr>
-            <tr><td><code>TCP 443</code></td><td>HTTPS</td><td>From the internet to the load balancer only. The balancer decrypts (<b>SSL offloading</b>), so internal traffic can be plain HTTP.</td></tr>
-            <tr><td><code>TCP 22</code></td><td>SSH</td><td>Closed to the public; administrators come in through a VPN first</td></tr>
-            <tr><td><code>TCP 3306</code></td><td>MySQL</td><td>Only between web servers and the database, never from outside</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- ===================== 1.2 ===================== -->
-    <section id="step-2">
-      <h2><span class="num">1.2</span>Clones, databases, caches &amp; async work</h2>
-      <p>Based on <b>Scalability for Dummies</b>, Step 2 of the primer. It is a four-part blog series by Sebastian Kreutzberger, written as his answer to the question of what it takes to make a web service massively scalable.<a class="src" href="#s12">[12]</a><a class="src" href="#s13">[13]</a> Each part fixes the bottleneck that the previous part exposes.</p>
-
-      <h3 id="clones">Part 1 · Clones</h3>
-      <p>Public servers sit behind a load balancer that spreads user requests evenly over a cluster of application servers. A user may hit server 2, then server 9, then server 2 again, and must get the same result each time. That leads to the series’ first golden rule:<a class="src" href="#s12">[12]</a></p>
-      <blockquote>every server contains exactly the same codebase and does not store any user-related data<cite>Scalability for Dummies, Part 1<a class="src" href="#s11">[11]</a></cite></blockquote>
-      <ul>
-        <li><b>Sessions</b> move to a centralised store reachable by all app servers: an external database or, faster, an external <b>persistent cache</b> such as Redis. “External” means in or near the same data centre, not on the app servers.<a class="src" href="#s12">[12]</a></li>
-        <li><b>Deployment</b> must update every server so none keeps serving old code. The article recommends the tool Capistrano, while admitting it takes some learning outside Ruby on Rails.<a class="src" href="#s12">[12]</a></li>
-        <li><b>Images.</b> Once servers hold no state, create an image of one (on AWS, an <b>AMI</b>, Amazon Machine Image) and use it as a “super-clone” for every new instance: boot it, deploy the latest code, and it’s ready.<a class="src" href="#s12">[12]</a></li>
-      </ul>
-      <figure>
-        <div class="figwrap">
-          <svg viewBox="0 0 640 200" role="img" aria-labelledby="f7t">
-            <title id="f7t">Identical clone servers, all started from one machine image, read and write sessions in one shared Redis store.</title>
-            <defs><marker id="ah5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="s-arrow"/></marker></defs>
-            <rect x="20" y="70" width="120" height="56" rx="8" class="s-warm"/><text x="80" y="95" text-anchor="middle" class="s-tb">Machine image</text><text x="80" y="113" text-anchor="middle" class="s-tm">AMI</text>
-            <g>
-              <rect x="215" y="20" width="160" height="40" rx="8" class="s-box"/><text x="295" y="45" text-anchor="middle" class="s-t">Clone 1 · same code</text>
-              <rect x="215" y="78" width="160" height="40" rx="8" class="s-box"/><text x="295" y="103" text-anchor="middle" class="s-t">Clone 2 · same code</text>
-              <rect x="215" y="136" width="160" height="40" rx="8" class="s-box"/><text x="295" y="161" text-anchor="middle" class="s-t">Clone 3 · same code</text>
-            </g>
-            <line x1="140" y1="90" x2="213" y2="40" class="s-dash" marker-end="url(#ah5)"/><line x1="140" y1="98" x2="213" y2="98" class="s-dash" marker-end="url(#ah5)"/><line x1="140" y1="106" x2="213" y2="156" class="s-dash" marker-end="url(#ah5)"/>
-            <text x="176" y="190" text-anchor="middle" class="s-ts">launch from image</text>
-            <rect x="470" y="70" width="150" height="56" rx="8" class="s-acc"/><text x="545" y="95" text-anchor="middle" class="s-tb">Session store</text><text x="545" y="113" text-anchor="middle" class="s-tm">Redis</text>
-            <line x1="375" y1="40" x2="468" y2="88" class="s-line"/><line x1="375" y1="98" x2="468" y2="98" class="s-line"/><line x1="375" y1="156" x2="468" y2="108" class="s-line"/>
-            <text x="420" y="190" text-anchor="middle" class="s-ts">no user data stays on a clone</text>
-          </svg>
-        </div>
-        <figcaption><b>Figure 1.6</b> Part 1 in one picture: stateless, identical clones launched from a shared image, with sessions held outside them.</figcaption>
-      </figure>
-
-      <h3 id="database">Part 2 · Database</h3>
-      <p>Now the servers scale horizontally and handle thousands of concurrent requests, until the application slows and finally breaks down because of the database (“It’s MySQL, isn’t it?”). The fix is more radical than adding clones, and there are two paths.<a class="src" href="#s12">[12]</a></p>
+      <h3 id="db-paths">Two long-term paths</h3>
+      <p>As load keeps growing, there are two broad strategies.<span class="cite">[<a href="#s5">5</a>, <a href="#s6">6</a>]</span></p>
       <figure>
         <div class="figwrap">
           <svg viewBox="0 0 640 262" role="img" aria-labelledby="f8t">
@@ -520,16 +463,64 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
             <text x="320" y="252" text-anchor="middle" class="s-tb">either way, requests slow again → add a cache</text>
           </svg>
         </div>
-        <figcaption><b>Figure 1.7</b> The two database paths in Part 2.<a class="src" href="#s12">[12]</a></figcaption>
+        <figcaption><b>Figure 1.5</b> Two ways to scale a relational database. Both end with a cache in front of it.<span class="cite">[<a href="#s5">5</a>, <a href="#s6">6</a>]</span></figcaption>
       </figure>
       <ul>
-        <li><b>Path #1</b> keeps the “beast” running. Each new measure costs more time and money than the last, and the DBA soon starts talking about sharding, denormalization and SQL tuning.<a class="src" href="#s12">[12]</a></li>
-        <li><b>Path #2</b> is easier while the dataset is still small and easy to migrate. The sooner you move joins into application code, the less code you will have to change later.<a class="src" href="#s12">[12]</a></li>
+        <li><b>Keep MySQL and tune it.</b> Hire a database administrator (DBA), set up master-slave replication (read from slaves, write to the master), and keep adding RAM to the master. Later come sharding, denormalization and SQL tuning, and each new measure costs more time and money than the last.<span class="cite">[<a href="#s5">5</a>, <a href="#s6">6</a>]</span></li>
+        <li><b>Denormalize from the start.</b> Allow no joins in any database query, using MySQL as if it were NoSQL or switching to a NoSQL database such as MongoDB or CouchDB. Joins move into application code. This is far easier while the dataset is small, and the sooner it is done, the less code has to change later.<span class="cite">[<a href="#s5">5</a>, <a href="#s6">6</a>]</span></li>
       </ul>
 
-      <h3 id="cache">Part 3 · Cache</h3>
-      <p>With a scalable database, users still wait when pages pull lots of data from it. The answer is a cache, and by “cache” the author always means an <b>in-memory</b> cache such as Memcached or Redis. He warns never to use file-based caching, because it makes cloning and auto-scaling servers painful.<a class="src" href="#s12">[12]</a></p>
-      <p>A cache is a simple key-value store sitting as a buffer between the application and the data store. The app asks the cache first and only goes to the main data source on a miss. It is fast because everything lives in RAM: Redis on a standard server can serve several hundred thousand reads per second, and writes, especially increments, are also very fast.<a class="src" href="#s12">[12]</a></p>
+      <h3 id="engines">Storage engines</h3>
+      <p>Within MySQL, each table chooses a <b>storage engine</b>, and the choice affects both features and performance.<span class="cite">[<a href="#s3">3</a>, <a href="#s10">10</a>]</span></p>
+      <div class="tablewrap">
+        <table>
+          <caption class="tcap"><b>Table 1.2</b> MySQL storage engines compared</caption>
+          <thead><tr><th>Engine</th><th>Transactions</th><th>Locking</th><th>Typical use</th></tr></thead>
+          <tbody>
+            <tr><td>InnoDB</td><td>Yes (ACID)</td><td>Row-level</td><td>The default, general-purpose engine</td></tr>
+            <tr><td>MyISAM</td><td>No</td><td>Table-level</td><td>Read-only or read-mostly workloads</td></tr>
+            <tr><td>Archive</td><td>No</td><td>Row-level</td><td>Compact, unindexed tables for rarely read history and logs</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Whichever path is taken, database requests eventually slow down again. The next step is to stop asking the database the same question twice.<span class="cite">[<a href="#s5">5</a>, <a href="#s6">6</a>]</span></p>
+    </section>
+
+    <!-- ===================== 1.5 ===================== -->
+    <section id="caching">
+      <h2><span class="num">1.5</span>Caching</h2>
+      <p>A cache keeps the result of work that has already been done so it can be reused. Caching can happen at several layers, from compiled code up to fully assembled objects.</p>
+
+      <h3 id="bytecode">Compiled code</h3>
+      <p>PHP normally parses and compiles each script on every request, then throws the result away. A bytecode cache keeps the compiled form until the file changes; Python’s <code>.pyc</code> files apply the same idea.<span class="cite">[<a href="#s3">3</a>]</span> In PHP this is now built in as <b>OPcache</b>, which keeps precompiled bytecode in shared memory.<span class="cite">[<a href="#s8">8</a>]</span></p>
+
+      <h3 id="static">Pre-rendered pages</h3>
+      <p>A dynamic page can be rendered once and saved as a static <code>.html</code> file, because web servers are extremely fast at serving static files. Craigslist works this way. The costs are disk space, the same markup repeated across thousands of files, and difficulty changing the layout of every page later.<span class="cite">[<a href="#s2">2</a>, <a href="#s3">3</a>, <a href="#s4">4</a>]</span></p>
+      <div class="callout warn"><span class="label">Keep caches off the clones</span><p>Caching to files on each server’s own disk undoes the work of §1.2: it makes cloning and auto-scaling painful. Caches belong in a shared, in-memory layer.<span class="cite">[<a href="#s5">5</a>, <a href="#s6">6</a>]</span></p></div>
+
+      <h3 id="query-cache">The database’s own query cache</h3>
+      <p>MySQL could cache the results of identical queries.<span class="cite">[<a href="#s2">2</a>, <a href="#s4">4</a>]</span></p>
+      <div class="callout warn"><span class="label">Changed since 2012</span><p>The MySQL query cache was deprecated in 5.7.20 and removed in MySQL 8.0, because it scaled poorly on busy multi-core servers.<span class="cite">[<a href="#s9">9</a>]</span> The concept still matters, but the feature is gone.</p></div>
+
+      <h3 id="in-memory">An in-memory cache layer</h3>
+      <p>An <b>in-memory cache</b> such as Memcached or Redis is a key-value store that sits as a buffer between the application and its data store. The app asks the cache first and only goes to the database on a miss.<span class="cite">[<a href="#s5">5</a>, <a href="#s6">6</a>]</span> It is fast because everything lives in RAM: Redis on a standard server can handle several hundred thousand reads per second, and writes, especially increments, are also very fast.<span class="cite">[<a href="#s5">5</a>, <a href="#s6">6</a>]</span> Facebook relied heavily on Memcached because its traffic was mostly reads.<span class="cite">[<a href="#s2">2</a>, <a href="#s3">3</a>]</span> RAM is limited, so the cache must evict entries; dropping the ones used least recently (LRU) keeps the hot data in memory.<span class="cite">[<a href="#s3">3</a>]</span></p>
+      <figure>
+        <div class="figwrap">
+          <svg viewBox="0 0 640 120" role="img" aria-labelledby="f4t">
+            <title id="f4t">Relative read speed: disk is slowest, then MySQL, then MySQL query cache, then Memcached in RAM.</title>
+            <defs><linearGradient id="spd" x1="0" x2="1"><stop offset="0" stop-color="var(--warm)"/><stop offset="1" stop-color="var(--accent)"/></linearGradient></defs>
+            <rect x="30" y="54" width="580" height="10" rx="5" fill="url(#spd)"/>
+            <g class="s-t" text-anchor="middle">
+              <circle cx="60" cy="59" r="8" class="s-box"/><text x="60" y="35" class="s-tb">Files on disk</text>
+              <circle cx="235" cy="59" r="8" class="s-box"/><text x="235" y="35" class="s-tb">MySQL</text>
+              <circle cx="410" cy="59" r="8" class="s-box"/><text x="410" y="35" class="s-tb">MySQL query cache</text>
+              <circle cx="580" cy="59" r="8" class="s-box"/><text x="580" y="35" class="s-tb">Memcached (RAM)</text>
+            </g>
+            <text x="30" y="96" class="s-ts">slower reads</text><text x="610" y="96" text-anchor="end" class="s-ts">faster reads</text>
+          </svg>
+        </div>
+        <figcaption><b>Figure 1.6</b> Where a read can be served from, ordered by speed.<span class="cite">[<a href="#s3">3</a>]</span> The ordering is qualitative; no measured numbers are implied.</figcaption>
+      </figure>
       <figure>
         <div class="figwrap">
           <svg viewBox="0 0 640 170" role="img" aria-labelledby="f9t">
@@ -544,29 +535,37 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
             <path d="M560,60 C560,25 320,25 320,58" class="s-dash" marker-end="url(#ah7)"/>
           </svg>
         </div>
-        <figcaption><b>Figure 1.8</b> The read flow Part 3 describes: cache first, database only on a miss. The primer later names this pattern <i>cache-aside</i>.</figcaption>
+        <figcaption><b>Figure 1.7</b> The read path through a cache: cache first, database only on a miss, then store the result for next time. This pattern is known as <i>cache-aside</i>.</figcaption>
       </figure>
+
+      <h3 id="what-to-cache">What to cache</h3>
+      <p>There are two common patterns for deciding what goes into the cache.<span class="cite">[<a href="#s5">5</a>, <a href="#s6">6</a>]</span></p>
       <div class="tablewrap">
         <table>
-          <caption class="tcap"><b>Table 1.4</b> The two caching patterns in Part 3</caption>
-          <thead><tr><th></th><th>#1 Cached database queries</th><th>#2 Cached objects</th></tr></thead>
+          <caption class="tcap"><b>Table 1.3</b> Caching query results vs caching objects</caption>
+          <thead><tr><th></th><th>Cached database queries</th><th>Cached objects</th></tr></thead>
           <tbody>
-            <tr><td><b>Key</b></td><td>A hash of the SQL query</td><td>Your own key for an assembled object</td></tr>
-            <tr><td><b>Value</b></td><td>The query’s result set</td><td>A fully assembled dataset or class instance (e.g. a <code>Product</code> with prices, texts, pictures, reviews)</td></tr>
-            <tr><td><b>Main problem</b></td><td>Expiration: when one table cell changes, every cached query that might include it has to be found and deleted</td><td>None highlighted; delete the object when its underlying data changes</td></tr>
-            <tr><td><b>Status</b></td><td>The older, still most common pattern</td><td>The author’s strong recommendation</td></tr>
-            <tr><td><b>Bonus</b></td><td>–</td><td>Enables asynchronism: workers assemble objects, the app reads the latest one and rarely touches the DB</td></tr>
+            <tr><td><b>Key</b></td><td>A hash of the SQL query</td><td>An identifier for an assembled object</td></tr>
+            <tr><td><b>Value</b></td><td>The query’s result set</td><td>A fully assembled dataset or class instance, such as a <code>Product</code> with its prices, texts, pictures and reviews</td></tr>
+            <tr><td><b>Main problem</b></td><td>Expiration: when one table cell changes, every cached query that might include it must be found and deleted</td><td>Little: delete the object when its underlying data changes</td></tr>
+            <tr><td><b>Status</b></td><td>The older and still most common pattern</td><td>The recommended pattern</td></tr>
+            <tr><td><b>Bonus</b></td><td>–</td><td>Enables background work: workers assemble objects, and the app reads the latest cached object without touching the database</td></tr>
           </tbody>
         </table>
       </div>
-      <p>Suggested objects to cache: user sessions (never in the database), fully rendered blog articles, activity streams, and user-to-friend relationships. The author prefers Redis for its extra database-like features (persistence, built-in lists and sets) but recommends Memcached if you only need caching, because it scales easily.<a class="src" href="#s12">[12]</a></p>
+      <p>Good candidates for object caching are user sessions (never kept in the database), fully rendered blog articles, activity streams and user-to-friend relationships. Redis adds database-like features such as persistence and built-in lists and sets, while Memcached is the simpler choice when only caching is needed, because it scales very easily.<span class="cite">[<a href="#s5">5</a>, <a href="#s6">6</a>]</span></p>
+    </section>
 
-      <h3 id="async">Part 4 · Asynchronism</h3>
-      <p>Picture a bakery that has no bread and tells you to come back in two hours. Asynchronism is how a web service avoids making its users “please wait a while”. There are two paradigms.<a class="src" href="#s12">[12]</a></p>
-      <h4>Async #1 · Do the work in advance</h4>
-      <p>“Bake at night, sell in the morning.” Do time-consuming work ahead of time and serve the finished result quickly. A common use is turning dynamic content into static content: pages are pre-rendered to HTML on every change, often by a script run hourly by a <b>cronjob</b>. Uploading those pages to AWS S3, CloudFront or another <b>CDN</b> lets a site handle millions of visitors per hour.<a class="src" href="#s12">[12]</a></p>
-      <h4>Async #2 · Queue the work</h4>
-      <p>Some requests can’t be foreseen, like a birthday cake with a custom name on it. For those, the work starts when the user asks, and the user is told to check back:<a class="src" href="#s12">[12]</a></p>
+    <!-- ===================== 1.6 ===================== -->
+    <section id="async">
+      <h2><span class="num">1.6</span>Moving slow work out of the request</h2>
+      <p>Picture a bakery that has no bread and asks you to come back in two hours. A web app should not make its users wait like that. <b>Asynchronism</b> keeps slow work out of the request–response path, and there are two ways to do it.<span class="cite">[<a href="#s5">5</a>, <a href="#s6">6</a>]</span></p>
+
+      <h3 id="precompute">Do the work in advance</h3>
+      <p>Bake the bread at night and sell it in the morning: do time-consuming work ahead of time and serve the finished result quickly.<span class="cite">[<a href="#s5">5</a>, <a href="#s6">6</a>]</span> This is the pre-rendered pages idea from §1.5 put on a schedule. Pages are rendered to static HTML on every change, often by a script that a <b>cronjob</b> runs every hour. Uploading those pages to AWS S3, CloudFront or another <b>content delivery network (CDN)</b> lets a site handle millions of visitors per hour.<span class="cite">[<a href="#s5">5</a>, <a href="#s6">6</a>]</span></p>
+
+      <h3 id="queues">Queue the work</h3>
+      <p>Some requests can’t be foreseen, like a birthday cake with a customer’s name on it. That work has to start when the user asks, without making the user wait for it to finish:<span class="cite">[<a href="#s5">5</a>, <a href="#s6">6</a>]</span></p>
       <figure>
         <div class="figwrap">
           <svg viewBox="0 0 640 224" role="img" aria-labelledby="f10t">
@@ -589,56 +588,123 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
             </g>
           </svg>
         </div>
-        <figcaption><b>Figure 1.9</b> The typical job-queue workflow from Part 4. The frontend never blocks: it queues the job, answers immediately, and later picks up the completion signal.<a class="src" href="#s12">[12]</a></figcaption>
+        <figcaption><b>Figure 1.8</b> A job queue. The frontend never blocks: it queues the job, answers immediately, and later passes the completion signal on to the user.<span class="cite">[<a href="#s5">5</a>, <a href="#s6">6</a>]</span></figcaption>
       </figure>
-      <p>To go deeper, the author points to the first three tutorials on the RabbitMQ website. <b>RabbitMQ</b> is one of many systems for async processing; ActiveMQ or a plain Redis list also work. His closing advice: if you do something time-consuming, try to do it asynchronously, because backends become nearly infinitely scalable and frontends stay snappy.<a class="src" href="#s12">[12]</a></p>
+      <p>The queue is constantly checked by a pool of <b>workers</b>, which pick up new jobs, process them and signal when each one is done. <b>RabbitMQ</b> is one system for running such a queue; ActiveMQ or a simple Redis list also work.<span class="cite">[<a href="#s5">5</a>, <a href="#s6">6</a>]</span> Combined with object caching (§1.5), workers can also assemble cached objects in the background. The result is a backend that scales almost without limit and a frontend that stays responsive.<span class="cite">[<a href="#s5">5</a>, <a href="#s6">6</a>]</span></p>
     </section>
 
-    <!-- ===================== 1.3 ===================== -->
+    <!-- ===================== 1.7 ===================== -->
+    <section id="redundancy">
+      <h2><span class="num">1.7</span>Removing single points of failure</h2>
+      <p>Every step so far added a component that the whole site now depends on: the load balancer, the database master, the session store. <b>High availability</b> deals with this by running such components in pairs that watch each other through <b>heartbeats</b>, small periodic messages. If one side goes quiet, the other takes over.<span class="cite">[<a href="#s3">3</a>]</span></p>
+      <ul>
+        <li><b>Active-active:</b> both load balancers accept traffic. If one stops responding, the other takes over its IP address and handles everything.<span class="cite">[<a href="#s3">3</a>, <a href="#s4">4</a>]</span></li>
+        <li><b>Active-passive:</b> one load balancer handles traffic while the other stands by, and the standby is promoted only if the active one fails.<span class="cite">[<a href="#s4">4</a>]</span></li>
+      </ul>
+      <p>The same idea works at a larger scale. <b>Global load balancing</b> routes users between whole data centres by region and availability.<span class="cite">[<a href="#s3">3</a>]</span></p>
+      <figure>
+        <div class="figwrap">
+          <svg viewBox="0 0 640 336" role="img" aria-labelledby="f6t">
+            <title id="f6t">Combined architecture: internet traffic reaches two load balancers that exchange heartbeats, which spread requests over three web servers; those reach a second load-balancer pair in front of a master-master database pair.</title>
+            <defs>
+              <marker id="ah4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="s-arrow"/></marker>
+              <marker id="ah4in" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="s-dot"/></marker>
+            </defs>
+            <!-- internet traffic into both front load balancers -->
+            <line x1="245" y1="10" x2="245" y2="40" class="s-in" marker-end="url(#ah4in)"/>
+            <line x1="395" y1="10" x2="395" y2="40" class="s-in" marker-end="url(#ah4in)"/>
+            <rect x="185" y="42" width="120" height="40" rx="8" class="s-acc"/><text x="245" y="67" text-anchor="middle" class="s-tb">LB 1</text>
+            <rect x="335" y="42" width="120" height="40" rx="8" class="s-acc"/><text x="395" y="67" text-anchor="middle" class="s-tb">LB 2</text>
+            <line x1="305" y1="62" x2="335" y2="62" class="s-dash"/>
+            <g class="anim"><circle r="4" class="s-dot2"><animateMotion dur="1.6s" repeatCount="indefinite" path="M305,62 L335,62 L305,62"/></circle></g>
+            <rect x="60" y="120" width="130" height="40" rx="8" class="s-box"/><text x="125" y="145" text-anchor="middle" class="s-t">Web 1</text>
+            <rect x="255" y="120" width="130" height="40" rx="8" class="s-box"/><text x="320" y="145" text-anchor="middle" class="s-t">Web 2</text>
+            <rect x="450" y="120" width="130" height="40" rx="8" class="s-box"/><text x="515" y="145" text-anchor="middle" class="s-t">Web 3</text>
+            <line x1="245" y1="82" x2="125" y2="118" class="s-line" marker-end="url(#ah4)"/><line x1="265" y1="82" x2="298" y2="118" class="s-line" marker-end="url(#ah4)"/><line x1="375" y1="82" x2="342" y2="118" class="s-line" marker-end="url(#ah4)"/><line x1="395" y1="82" x2="515" y2="118" class="s-line" marker-end="url(#ah4)"/>
+            <rect x="185" y="186" width="120" height="34" rx="8" class="s-acc"/><text x="245" y="208" text-anchor="middle" class="s-t">LB 3</text>
+            <rect x="335" y="186" width="120" height="34" rx="8" class="s-acc"/><text x="395" y="208" text-anchor="middle" class="s-t">LB 4</text>
+            <line x1="305" y1="203" x2="335" y2="203" class="s-dash"/>
+            <g class="anim"><circle r="4" class="s-dot2"><animateMotion dur="1.6s" begin=".8s" repeatCount="indefinite" path="M305,203 L335,203 L305,203"/></circle></g>
+            <line x1="125" y1="160" x2="228" y2="184" class="s-line" marker-end="url(#ah4)"/>
+            <line x1="298" y1="160" x2="265" y2="184" class="s-line" marker-end="url(#ah4)"/><line x1="342" y1="160" x2="375" y2="184" class="s-line" marker-end="url(#ah4)"/>
+            <line x1="515" y1="160" x2="412" y2="184" class="s-line" marker-end="url(#ah4)"/>
+            <rect x="185" y="244" width="120" height="38" rx="8" class="s-warm"/><text x="245" y="268" text-anchor="middle" class="s-tb">DB master A</text>
+            <rect x="335" y="244" width="120" height="38" rx="8" class="s-warm"/><text x="395" y="268" text-anchor="middle" class="s-tb">DB master B</text>
+            <line x1="305" y1="263" x2="335" y2="263" class="s-line"/>
+            <line x1="245" y1="220" x2="245" y2="242" class="s-line" marker-end="url(#ah4)"/><line x1="395" y1="220" x2="395" y2="242" class="s-line" marker-end="url(#ah4)"/>
+            <!-- legend -->
+            <line x1="40" y1="300" x2="600" y2="300" class="s-dash" style="stroke-dasharray:2 4;opacity:.6"/>
+            <g>
+              <line x1="40" y1="320" x2="68" y2="320" class="s-in" marker-end="url(#ah4in)"/><text x="78" y="324" class="s-ts">Traffic from the internet</text>
+              <line x1="250" y1="320" x2="278" y2="320" class="s-line" marker-end="url(#ah4)"/><text x="288" y="324" class="s-ts">Request flow</text>
+              <line x1="380" y1="320" x2="408" y2="320" class="s-dash"/><circle cx="394" cy="320" r="3.5" class="s-dot2"/><text x="418" y="324" class="s-ts">Heartbeat</text>
+              <line x1="488" y1="320" x2="516" y2="320" class="s-line"/><text x="526" y="324" class="s-ts">Two-way sync</text>
+            </g>
+          </svg>
+        </div>
+        <figcaption><b>Figure 1.9</b> The full layout: paired load balancers watching each other’s heartbeat, cloned web servers, and a master-master database pair, so that no single machine can take the site down.<span class="cite">[<a href="#s3">3</a>]</span></figcaption>
+      </figure>
+
+      <h3 id="security">Locking it down</h3>
+      <p>The last question is what traffic should reach the data centre at all. The answer follows the <b>principle of least privilege</b>: a firewall opens only the ports each tier needs.<span class="cite">[<a href="#s3">3</a>]</span></p>
+      <div class="tablewrap">
+        <table>
+          <caption class="tcap"><b>Table 1.4</b> Which ports to open, and where</caption>
+          <thead><tr><th>Port</th><th>Protocol</th><th>Where it should be open</th></tr></thead>
+          <tbody>
+            <tr><td><code>TCP 80</code></td><td>HTTP</td><td>From the internet to the load balancer</td></tr>
+            <tr><td><code>TCP 443</code></td><td>HTTPS</td><td>From the internet to the load balancer only. The balancer decrypts traffic (<b>SSL offloading</b>), so internal traffic can be plain HTTP.</td></tr>
+            <tr><td><code>TCP 22</code></td><td>SSH</td><td>Closed to the public; administrators connect through a VPN first</td></tr>
+            <tr><td><code>TCP 3306</code></td><td>MySQL</td><td>Only between web servers and the database, never from outside</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===================== 1.8 ===================== -->
     <section id="next-steps">
-      <h2><span class="num">1.3</span>Next steps</h2>
-      <p>After these two steps, the primer moves to three high-level trade-offs, then to specific components such as DNS, CDNs and load balancers.<a class="src" href="#s1">[1]</a></p>
+      <h2><span class="num">1.8</span>Everything is a trade-off</h2>
+      <p>None of these steps is free. Each one bought capacity or resilience by paying in cost, complexity, stale data or more moving parts. The next units look at the trade-offs behind those choices, then at specific components such as DNS, CDNs and load balancers in depth.<span class="cite">[<a href="#s1">1</a>]</span></p>
       <ul>
         <li><b>Performance</b> vs <b>scalability</b></li>
         <li><b>Latency</b> vs <b>throughput</b></li>
         <li><b>Availability</b> vs <b>consistency</b></li>
       </ul>
-      <div class="callout tip"><span class="label">Keep in mind</span><p>Everything is a trade-off. Every technique in this unit buys capacity or resilience and pays for it somewhere: cost, complexity, stale data, or more moving parts.<a class="src" href="#s1">[1]</a></p></div>
     </section>
 
-    <!-- ===================== 1.4 ===================== -->
+    <!-- ===================== 1.9 ===================== -->
     <section id="resources">
-      <h2><span class="num">1.4</span>Resources</h2>
+      <h2><span class="num">1.9</span>Resources</h2>
       <div class="res">
-        <a href="https://www.youtube.com/watch?v=-W9F__D3oY4"><b>CS75 Lecture 9: Scalability</b><span>The full Harvard lecture (YouTube)</span></a>
-        <a href="https://web.archive.org/web/20221030091841/http://www.lecloud.net/tagged/scalability/chrono"><b>Scalability for Dummies</b><span>Original series, Internet Archive copy</span></a>
-        <a href="https://hello-kirby.hashnode.dev/clones"><b>Article mirror, parts 1–4</b><span>Original English text with a Chinese translation alongside</span></a>
-        <a href="https://github.com/donnemartin/system-design-primer#system-design-topics-start-here"><b>Primer: start here</b><span>The source section for this unit</span></a>
-        <a href="https://github.com/donnemartin/system-design-primer#anki-flashcards"><b>Primer Anki decks</b><span>Spaced-repetition flashcards for the whole primer</span></a>
-        <a href="https://www.rabbitmq.com/tutorials"><b>RabbitMQ tutorials</b><span>The queue tutorials Part 4 recommends</span></a>
+        <a href="https://www.youtube.com/watch?v=-W9F__D3oY4"><b>CS75 Lecture 9: Scalability</b><span>David Malan’s full Harvard lecture (video)</span></a>
+        <a href="https://web.archive.org/web/20221030091841/http://www.lecloud.net/tagged/scalability/chrono"><b>Scalability for Dummies</b><span>The original four-part series (Internet Archive)</span></a>
+        <a href="https://hello-kirby.hashnode.dev/clones"><b>Scalability for Dummies, mirrored</b><span>Original English text, with a Chinese translation alongside</span></a>
+        <a href="https://github.com/donnemartin/system-design-primer#system-design-topics-start-here"><b>System Design Primer</b><span>The source section for this unit</span></a>
+        <a href="https://github.com/donnemartin/system-design-primer#anki-flashcards"><b>Anki flashcards</b><span>Spaced-repetition decks covering all units</span></a>
+        <a href="https://www.rabbitmq.com/tutorials"><b>RabbitMQ tutorials</b><span>Hands-on introduction to job queues and workers</span></a>
         <a href="https://en.wikipedia.org/wiki/Standard_RAID_levels"><b>Standard RAID levels</b><span>Diagrams of striping, mirroring and parity</span></a>
-        <a href="https://docs.aws.amazon.com/elasticloadbalancing/latest/application/sticky-sessions.html"><b>Sticky sessions in practice</b><span>How a modern cloud load balancer does it</span></a>
+        <a href="https://docs.aws.amazon.com/elasticloadbalancing/latest/application/sticky-sessions.html"><b>Sticky sessions in practice</b><span>How a modern cloud load balancer implements them</span></a>
       </div>
     </section>
 
-    <!-- ===================== 1.5 ===================== -->
+    <!-- ===================== 1.10 ===================== -->
     <section id="sources">
-      <h2><span class="num">1.5</span>Sources</h2>
+      <h2><span class="num">1.10</span>Sources</h2>
       <ol class="sources">
         <li id="s1">D. Martin et al., <a href="https://github.com/donnemartin/system-design-primer#system-design-topics-start-here">The System Design Primer: System design topics: start here</a>, GitHub.</li>
-        <li id="s2">D. Malan, <a href="https://www.youtube.com/watch?v=-W9F__D3oY4">CS75 (Summer 2012) Lecture 9: Scalability</a>, Harvard, YouTube.</li>
-        <li id="s3">Vinayak J., <a href="https://vinayakj02.hashnode.dev/scalability-horizontal-and-vertical-scaling">Scalability: Horizontal and Vertical Scaling</a> (lecture notes), Hashnode, 2023.</li>
-        <li id="s4"><a href="https://renee856746.substack.com/p/david-malans-lecture-summary-scalability">David Malan’s Lecture summary (Scalability)</a>, Substack.</li>
-        <li id="s5">High Scalability, <a href="https://highscalability.com/great-introductory-video-on-scalability-from-harvard-compute/">Great Introductory Video on Scalability from Harvard Computer Science</a>.</li>
-        <li id="s6">Wikipedia, <a href="https://en.wikipedia.org/wiki/Standard_RAID_levels">Standard RAID levels</a>.</li>
-        <li id="s7">PHP Manual, <a href="https://www.php.net/manual/en/book.opcache.php">OPcache: Introduction</a>.</li>
-        <li id="s8">MySQL 5.7 Reference Manual, <a href="https://dev.mysql.com/doc/refman/en/query-cache.html">The MySQL Query Cache</a>; MySQL Blog, <a href="https://dev.mysql.com/blog-archive/mysql-8-0-retiring-support-for-the-query-cache/">MySQL 8.0: Retiring Support for the Query Cache</a>.</li>
-        <li id="s9">MySQL 8.0 Reference Manual, <a href="https://dev.mysql.com/doc/refman/8.0/en/storage-engines.html">Alternative Storage Engines</a>.</li>
-        <li id="s10">AWS, <a href="https://docs.aws.amazon.com/elasticloadbalancing/latest/application/sticky-sessions.html">Sticky sessions for your Application Load Balancer</a>.</li>
-        <li id="s11">S. Kreutzberger, Scalability for Dummies: <a href="https://web.archive.org/web/20220530193911/https://www.lecloud.net/post/7295452622/scalability-for-dummies-part-1-clones">Part 1</a>, <a href="https://web.archive.org/web/20220602114024/https://www.lecloud.net/post/7994751381/scalability-for-dummies-part-2-database">Part 2</a>, <a href="https://web.archive.org/web/20230126233752/https://www.lecloud.net/post/9246290032/scalability-for-dummies-part-3-cache">Part 3</a>, <a href="https://web.archive.org/web/20220926171507/https://www.lecloud.net/post/9699762917/scalability-for-dummies-part-4-asynchronism">Part 4</a>, lecloud.net (Internet Archive).</li>
-        <li id="s12">Hello Kayac, mirror of the original text: <a href="https://hello-kirby.hashnode.dev/clones">Clones</a>, <a href="https://hello-kirby.hashnode.dev/database">Database</a>, <a href="https://hello-kirby.hashnode.dev/cache">Cache</a>, <a href="https://hello-kirby.hashnode.dev/asynchronism">Asynchronism</a>, Hashnode, 2023.</li>
-        <li id="s13">High Scalability, <a href="https://highscalability.com/stuff-the-internet-says-on-scalability-for-august-26-2011/">Stuff The Internet Says On Scalability For August 26, 2011</a> (credits the series to Sebastian Kreutzberger).</li>
+        <li id="s2">D. Malan, <a href="https://www.youtube.com/watch?v=-W9F__D3oY4">CS75 (Summer 2012) Lecture 9: Scalability</a>, Harvard University, video.</li>
+        <li id="s3">Vinayak J., <a href="https://vinayakj02.hashnode.dev/scalability-horizontal-and-vertical-scaling">Scalability: Horizontal and Vertical Scaling</a>, notes on [2], Hashnode, 2023.</li>
+        <li id="s4"><a href="https://renee856746.substack.com/p/david-malans-lecture-summary-scalability">David Malan’s Lecture summary (Scalability)</a>, notes on [2], Substack.</li>
+        <li id="s5">S. Kreutzberger, Scalability for Dummies: <a href="https://web.archive.org/web/20220530193911/https://www.lecloud.net/post/7295452622/scalability-for-dummies-part-1-clones">Part 1: Clones</a>, <a href="https://web.archive.org/web/20220602114024/https://www.lecloud.net/post/7994751381/scalability-for-dummies-part-2-database">Part 2: Database</a>, <a href="https://web.archive.org/web/20230126233752/https://www.lecloud.net/post/9246290032/scalability-for-dummies-part-3-cache">Part 3: Cache</a>, <a href="https://web.archive.org/web/20220926171507/https://www.lecloud.net/post/9699762917/scalability-for-dummies-part-4-asynchronism">Part 4: Asynchronism</a>, lecloud.net (Internet Archive).</li>
+        <li id="s6">Hello Kayac, mirror of the original text of [5]: <a href="https://hello-kirby.hashnode.dev/clones">Clones</a>, <a href="https://hello-kirby.hashnode.dev/database">Database</a>, <a href="https://hello-kirby.hashnode.dev/cache">Cache</a>, <a href="https://hello-kirby.hashnode.dev/asynchronism">Asynchronism</a>, Hashnode, 2023.</li>
+        <li id="s7">Wikipedia, <a href="https://en.wikipedia.org/wiki/Standard_RAID_levels">Standard RAID levels</a>; <a href="https://en.wikipedia.org/wiki/Nested_RAID_levels">Nested RAID levels</a>.</li>
+        <li id="s8">PHP Manual, <a href="https://www.php.net/manual/en/book.opcache.php">OPcache: Introduction</a>.</li>
+        <li id="s9">MySQL 5.7 Reference Manual, <a href="https://dev.mysql.com/doc/refman/en/query-cache.html">The MySQL Query Cache</a>; MySQL Blog, <a href="https://dev.mysql.com/blog-archive/mysql-8-0-retiring-support-for-the-query-cache/">MySQL 8.0: Retiring Support for the Query Cache</a>.</li>
+        <li id="s10">MySQL 8.0 Reference Manual, <a href="https://dev.mysql.com/doc/refman/8.0/en/storage-engines.html">Alternative Storage Engines</a>.</li>
+        <li id="s11">AWS, <a href="https://docs.aws.amazon.com/elasticloadbalancing/latest/application/sticky-sessions.html">Sticky sessions for your Application Load Balancer</a>.</li>
+        <li id="s12">Apache HTTP Server Wiki, <a href="https://cwiki.apache.org/confluence/spaces/HTTPD/pages/115522422/PerformanceScalingOut">Performance Optimization: Scaling Out</a>.</li>
       </ol>
+      <p class="fine">Material from [2] is drawn from the written notes [3] and [4], checked against [7]–[11]. Material from [5] follows the mirror [6].</p>
     </section>
   </main>
 </div>
@@ -648,48 +714,52 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
   <div class="note-head"><strong id="noteTitle">Key terms · Unit 1</strong><button id="noteClose" aria-label="Close key terms">×</button></div>
   <h5>Scaling</h5>
   <dl>
-    <dt>Vertical scaling</dt><dd>Bigger machine: more CPU, RAM, disk. Simple, but capped and a single point of failure.</dd>
+    <dt>Vertical scaling</dt><dd>A bigger machine: more CPU, RAM, disk. Simple, but capped and a single point of failure.</dd>
     <dt>Horizontal scaling</dt><dd>More ordinary machines sharing the load.</dd>
-    <dt>Clone</dt><dd>An identical, stateless app server; launched from a machine image (AMI).</dd>
     <dt>Single point of failure (SPOF)</dt><dd>One component whose failure takes the whole system down.</dd>
   </dl>
-  <h5>Traffic</h5>
+  <h5>Spreading traffic</h5>
   <dl>
     <dt>Load balancer</dt><dd>Public entry point that spreads requests over back-end servers on private IPs.</dd>
     <dt>Round-robin DNS</dt><dd>DNS hands out server IPs in rotation; ignores load and is skewed by caching.</dd>
     <dt>TTL</dt><dd>How long a cached answer (DNS record, cache entry) stays valid.</dd>
-    <dt>Sticky session</dt><dd>Sending a user back to the same server, usually via a balancer cookie. Also “session affinity”.</dd>
-    <dt>SSL offloading</dt><dd>The balancer decrypts HTTPS so back ends don’t have to.</dd>
+    <dt>Clone</dt><dd>An identical, stateless server, often launched from a machine image (AMI).</dd>
   </dl>
-  <h5>Reliability</h5>
+  <h5>User state</h5>
   <dl>
+    <dt>Session store</dt><dd>Shared, external place for session data (database or persistent cache such as Redis).</dd>
+    <dt>Sticky session</dt><dd>Sending a user back to the same server, usually via a balancer cookie. Also “session affinity”.</dd>
     <dt>RAID</dt><dd>Drives combined by striping (0), mirroring (1), parity (5, 6) or both (10).</dd>
-    <dt>Heartbeat</dt><dd>Periodic “I’m alive” message; silence triggers fail-over.</dd>
-    <dt>Active-active / active-passive</dt><dd>Both nodes serve traffic / one serves while the other stands by.</dd>
-    <dt>Least privilege</dt><dd>Open only the ports and access each tier needs.</dd>
   </dl>
-  <h5>Data</h5>
+  <h5>Database</h5>
   <dl>
     <dt>Replication</dt><dd>Automatic copies of a database on several servers.</dd>
-    <dt>Master-slave</dt><dd>Writes to master, reads from slaves; master is a write SPOF.</dd>
+    <dt>Master-slave</dt><dd>Writes to the master, reads from slaves; the master is a write SPOF.</dd>
     <dt>Master-master</dt><dd>Two masters both take writes and sync with each other.</dd>
     <dt>Partitioning / sharding</dt><dd>Splitting data across servers (by school, by A–L / M–Z…).</dd>
     <dt>Denormalization</dt><dd>Storing data redundantly so queries need no joins.</dd>
-    <dt>Storage engine</dt><dd>MySQL per-table engine: InnoDB (transactions), MyISAM, Archive.</dd>
+    <dt>Storage engine</dt><dd>MySQL’s per-table engine: InnoDB (transactions), MyISAM, Archive.</dd>
   </dl>
   <h5>Caching</h5>
   <dl>
-    <dt>In-memory cache</dt><dd>Key-value store in RAM (Memcached, Redis) between app and DB.</dd>
-    <dt>Cached query vs cached object</dt><dd>Key = hashed SQL (hard to expire) vs key = assembled object (preferred).</dd>
     <dt>Bytecode cache</dt><dd>Reuse compiled scripts instead of recompiling (PHP OPcache, <code>.pyc</code>).</dd>
-    <dt>LRU eviction</dt><dd>When full, drop the least recently used entries.</dd>
+    <dt>In-memory cache</dt><dd>Key-value store in RAM (Memcached, Redis) between app and database.</dd>
+    <dt>Cache-aside</dt><dd>Check the cache first; on a miss read the database and store the result.</dd>
+    <dt>Cached query vs cached object</dt><dd>Key = hashed SQL (hard to expire) vs key = assembled object (preferred).</dd>
+    <dt>LRU eviction</dt><dd>When the cache is full, drop the least recently used entries.</dd>
   </dl>
-  <h5>Asynchronism</h5>
+  <h5>Background work</h5>
   <dl>
-    <dt>Precomputing</dt><dd>Do work ahead of time (e.g. cron renders static HTML, pushed to a CDN).</dd>
-    <dt>Job queue &amp; workers</dt><dd>Frontend queues slow jobs; workers process them and signal completion.</dd>
-    <dt>Message broker</dt><dd>System that runs the queue: RabbitMQ, ActiveMQ, Redis list.</dd>
-    <dt>Trade-off</dt><dd>Every gain in scale costs something: money, complexity, freshness.</dd>
+    <dt>Asynchronism</dt><dd>Keeping slow work out of the request–response path.</dd>
+    <dt>Precomputing</dt><dd>Doing work ahead of time, e.g. a cronjob renders static pages to a CDN.</dd>
+    <dt>Job queue &amp; workers</dt><dd>The frontend queues slow jobs; workers process them and signal completion.</dd>
+  </dl>
+  <h5>Redundancy &amp; security</h5>
+  <dl>
+    <dt>Heartbeat</dt><dd>Periodic “I’m alive” message; silence triggers fail-over.</dd>
+    <dt>Active-active / active-passive</dt><dd>Both nodes serve traffic / one serves while the other stands by.</dd>
+    <dt>SSL offloading</dt><dd>The load balancer decrypts HTTPS so back ends don’t have to.</dd>
+    <dt>Least privilege</dt><dd>Open only the ports and access each tier needs.</dd>
   </dl>
 </aside>
 
