@@ -185,6 +185,8 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
   :root:not([data-theme="light"]) .theme-btn .i-moon{display:none}
 }
 .rail-actions{display:flex;align-items:center;gap:8px;min-width:0}
+.back{white-space:nowrap}
+@media (max-width: 960px){ .rail-head{gap:10px} .rail-actions{flex:none} .toc-toggle{flex:1 1 auto;max-width:none;justify-content:space-between} }
 </style>
 <script>(function(){try{var t=localStorage.getItem('sysdes-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 </head>
@@ -202,25 +204,40 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
     </div>
     <nav class="toc" id="toc" hidden>
       <ol>
-        <li><a href="#why"><span class="num">4.1</span>Why the trade-off exists</a></li>
-        <li><a href="#cap"><span class="num">4.2</span>The CAP theorem</a>
+        <li><a href="#problem"><span class="num">4.1</span>One copy becomes two</a>
           <ol>
-            <li><a href="#origin">Where it came from</a></li>
-            <li><a href="#guarantees">The three guarantees</a></li>
-            <li><a href="#precise">The precise terms</a></li>
-            <li><a href="#proof">Why CAP is true</a></li>
-            <li><a href="#no-ca">Why “CA” isn’t a choice</a></li>
+            <li><a href="#scale-out">Scaling out</a></li>
+            <li><a href="#network">The network will fail</a></li>
           </ol>
         </li>
-        <li><a href="#cp"><span class="num">4.3</span>CP: keep consistency</a></li>
-        <li><a href="#ap"><span class="num">4.4</span>AP: keep availability</a></li>
-        <li><a href="#story"><span class="num">4.5</span>CAP in plain English</a>
+        <li><a href="#cap"><span class="num">4.2</span>The CAP theorem</a>
+          <ol>
+            <li><a href="#guarantees">Three guarantees</a></li>
+            <li><a href="#precise">What each one means exactly</a></li>
+          </ol>
+        </li>
+        <li><a href="#proof"><span class="num">4.3</span>Why all three can’t hold</a>
+          <ol>
+            <li><a href="#critical">The critical condition</a></li>
+            <li><a href="#no-ca">Why “CA” is not an option</a></li>
+          </ol>
+        </li>
+        <li><a href="#choose"><span class="num">4.4</span>Choosing CP or AP</a>
+          <ol>
+            <li><a href="#cp-ap">The two pure designs</a></li>
+            <li><a href="#atm">With real money: two ATMs</a></li>
+            <li><a href="#degrees">Degrees in between</a></li>
+            <li><a href="#cost">What availability costs</a></li>
+            <li><a href="#which">Which to pick</a></li>
+          </ol>
+        </li>
+        <li><a href="#story"><span class="num">4.5</span>The same choice in plain English</a>
           <ol>
             <li><a href="#story-steps">Remembrance Inc.</a></li>
             <li><a href="#clerk">The run-around clerk</a></li>
           </ol>
         </li>
-        <li><a href="#misconceptions"><span class="num">4.6</span>Common misconceptions</a></li>
+        <li><a href="#limits"><span class="num">4.6</span>What CAP does not say</a></li>
         <li><a href="#resources"><span class="num">4.7</span>Resources</a></li>
         <li><a href="#sources"><span class="num">4.8</span>Sources</a></li>
       </ol>
@@ -231,38 +248,38 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
     <header class="unit">
       <p class="eyebrow">SYSTEM DESIGN PRIMER · UNIT 4</p>
       <h1>Availability vs consistency</h1>
-      <p class="lede">The third of the primer’s high-level trade-offs. Once data lives on more than one machine, the network between them can fail, and when it does you must choose: answer every request, or only ever give correct answers.<a class="src" href="#s1">[1]</a> This unit covers why scaling out forces the trade-off, the CAP theorem and its precise terms (register, linearizability, asynchronous network, partition), why “CA” isn’t a choice, when to pick CP or AP, the Remembrance Inc. story with eventual consistency, and common CAP misconceptions.</p>
-      <div class="meta"><span>Primer section · Availability vs consistency</span><span>Robert Greiner · “CAP Theorem: Revisited” (2014)</span><span>Kaushik Sathupadi · plain-English intro</span><span>Henry Robinson · CAP FAQ (2013)</span></div>
+      <p class="lede">The third of three high-level trade-offs. As soon as data lives on more than one machine, the network between those machines can fail. When it does, a system has to choose between answering every request and only ever giving correct answers.<a class="src" href="#s1">[1]</a><a class="src" href="#s2">[2]</a> This unit follows that choice from where it comes from, through the CAP theorem that proves it, to how to make it.</p>
     </header>
 
     <!-- ===================== 4.1 ===================== -->
-    <section id="why">
-      <h2><span class="num">4.1</span>Why the trade-off exists</h2>
-      <p>Greiner starts from the trend of <b>scaling out</b>: handling more load by adding commodity machines rather than buying a bigger one (Unit 1’s horizontal scaling). Scaling out turns an application into a <b>distributed system</b>, a set of interconnected <b>nodes</b> that share data. That brings new complexity, and the CAP theorem describes it.<a class="src" href="#s2">[2]</a></p>
-      <p>Two points from Greiner set up everything below:<a class="src" href="#s2">[2]</a></p>
-      <ul>
-        <li><b>Distributed programming is not object-oriented programming.</b> Assumptions that hold when code shares memory inside one process stop holding when nodes are separated in space and time.</li>
-        <li><b>Networks are unreliable.</b> Assuming otherwise is one of the <i>fallacies of distributed computing</i>, a list of false assumptions whose first entry is “the network is reliable”.<a class="src" href="#s9">[9]</a> Network failures will happen to your system, and you don’t get to choose when.</li>
-      </ul>
+    <section id="problem">
+      <h2><span class="num">4.1</span>One copy becomes two</h2>
+
+      <h3 id="scale-out">Scaling out</h3>
+      <p>People build distributed systems to get something more reliable than a centralized one, which raises the question of how reliable a system can be made, and whether there is a limit. The CAP theorem formalizes some useful limits.<a class="src" href="#s5">[5]</a> A common way to grow a system is <b>scaling out</b>: adding more commodity machines to it, the horizontal scaling of Unit 1. Once the work is spread over many machines, the application has become a <b>distributed system</b>, a set of interconnected <b>nodes</b> that share data.<a class="src" href="#s2">[2]</a> Sharing data means keeping copies of it on several nodes, and every copy has to be kept in step with the others.</p>
+      <p>Throughout this unit we follow the smallest possible case: one value, <code>x</code>, stored on two nodes. Client A writes it and client B reads it. Each idea below is applied to this pair.</p>
+
+      <h3 id="network">The network will fail</h3>
+      <p>Assumptions that hold for code sharing memory inside one process break down once nodes are split across space and time.<a class="src" href="#s2">[2]</a> The nodes then depend on the network between them, and assuming the network is reliable is the first of the well-known <i>fallacies of distributed computing</i>.<a class="src" href="#s9">[9]</a> Network failures will happen, and a system does not get to choose when.<a class="src" href="#s2">[2]</a></p>
+      <p>So the question is not <i>whether</i> the two copies of <code>x</code> will ever be cut off from each other, but what the system does when they are. The CAP theorem answers that question.</p>
     </section>
 
     <!-- ===================== 4.2 ===================== -->
     <section id="cap">
       <h2><span class="num">4.2</span>The CAP theorem</h2>
+      <p>Eric Brewer put the idea forward, unproven, as a conjecture in a 2000 keynote at the Principles of Distributed Computing (PODC) conference. In 2002 Seth Gilbert and Nancy Lynch of MIT formalised it and proved it, turning “Brewer’s conjecture” into a theorem.<a class="src" href="#s4">[4]</a><a class="src" href="#s6">[6]</a><a class="src" href="#s7">[7]</a></p>
 
-      <h3 id="origin">Where it came from</h3>
-      <p>Eric Brewer posed the idea, then unproven, in his keynote <i>Towards Robust Distributed Systems</i> at the Principles of Distributed Computing (PODC) conference in 2000. Two years later, MIT researchers Seth Gilbert and Nancy Lynch formalised and proved it, turning “Brewer’s conjecture” into a theorem.<a class="src" href="#s4">[4]</a><a class="src" href="#s6">[6]</a><a class="src" href="#s7">[7]</a></p>
-
-      <h3 id="guarantees">The three guarantees</h3>
-      <p>The primer’s version: in a distributed computer system, you can only support two of the following guarantees.<a class="src" href="#s1">[1]</a></p>
+      <h3 id="guarantees">Three guarantees</h3>
+      <p>In a distributed computer system, you can only support two of the following three guarantees:<a class="src" href="#s1">[1]</a></p>
       <ul>
         <li><b>Consistency (C)</b>: every read receives the most recent write or an error.</li>
         <li><b>Availability (A)</b>: every request receives a response, without a guarantee that it contains the most recent version of the information.</li>
         <li><b>Partition tolerance (P)</b>: the system continues to operate despite arbitrary partitioning due to network failures.</li>
       </ul>
+      <p>For the two copies of <code>x</code>: C means B never reads an old <code>x</code> after A’s write; A means B always gets <i>some</i> value back; P means the system keeps running even if the nodes can’t reach each other.</p>
       <figure>
         <div class="figwrap">
-          <svg viewBox="0 -14 640 314" role="img" aria-labelledby="f1t">
+<svg viewBox="0 -14 640 314" role="img" aria-labelledby="f1t">
             <title id="f1t">The CAP triangle. Consistency at the top, availability bottom left, partition tolerance bottom right. The CP and AP edges are the real choices; the CA edge is dashed because partitions cannot be ruled out.</title>
             <line x1="320" y1="52" x2="530" y2="240" stroke="var(--accent)" stroke-width="3"/>
             <line x1="110" y1="240" x2="530" y2="240" stroke="var(--accent)" stroke-width="3"/>
@@ -282,67 +299,75 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
             <text x="178" y="156" text-anchor="end" class="s-ts" style="fill:var(--bad)">distributed system</text>
           </svg>
         </div>
-        <figcaption><b>Figure 4.1</b> The “pick two” picture, redrawn after the primer’s figure from Greiner’s article.<a class="src" href="#s1">[1]</a><a class="src" href="#s2">[2]</a> P is shaded differently because it is not really optional, and the CA edge is red because it isn’t a real option for a distributed system: the choice is along the solid edges, CP or AP (§4.2, “Why CA isn’t a choice”).</figcaption>
+        <figcaption><b>Figure 4.1</b> The “pick two” view, redrawn from the figure that accompanies the guarantees.<a class="src" href="#s1">[1]</a><a class="src" href="#s2">[2]</a> P is shaded differently because it is not really optional, and the CA edge is red because it is not a real option for a distributed system (§4.3). The real choice lies along the solid edges: CP or AP.</figcaption>
       </figure>
-      <p>The three sources word the guarantees slightly differently. The differences matter: they are exactly where most CAP arguments start.</p>
+
+      <h3 id="precise">What each one means exactly</h3>
+      <p>The proof needs sharper definitions than the one-line versions above. Stated exactly, CAP says it is impossible to build <b>read-write storage</b> in an <b>asynchronous network</b> that is consistent, available and partition-tolerant all at once.<a class="src" href="#s4">[4]</a> Each term pins something down:</p>
       <div class="tablewrap">
         <table>
-          <caption class="tcap"><b>Table 4.1</b> How each source defines C, A and P</caption>
-          <thead><tr><th></th><th>Primer<a class="src" href="#s1">[1]</a></th><th>Greiner<a class="src" href="#s2">[2]</a></th><th>CAP FAQ (formal)<a class="src" href="#s4">[4]</a></th></tr></thead>
+          <caption class="tcap"><b>Table 4.1</b> The guarantees, everyday and exact</caption>
+          <thead><tr><th></th><th>Everyday meaning<a class="src" href="#s1">[1]</a><a class="src" href="#s2">[2]</a></th><th>Exact meaning used in the proof<a class="src" href="#s4">[4]</a></th></tr></thead>
           <tbody>
-            <tr><td><b>C</b></td><td>Every read gets the most recent write, or an error</td><td>A read returns the most recent write for a given client</td><td>All reads and writes seen by all nodes are <i>atomic</i> (linearizable)</td></tr>
-            <tr><td><b>A</b></td><td>Every request gets a response, maybe not the latest data</td><td>A non-failing node answers reasonably, in reasonable time, with no error or timeout</td><td>Every request <i>eventually</i> completes with a valid (non-error) response</td></tr>
-            <tr><td><b>P</b></td><td>Keeps operating despite network failures splitting it</td><td>Keeps functioning when network partitions occur</td><td>The network is allowed to drop any messages</td></tr>
+            <tr><td><b>C</b></td><td>A read returns the most recent write (or an error)</td><td>All operations are <i>atomic</i>, also called linearizable</td></tr>
+            <tr><td><b>A</b></td><td>A non-failing node answers in reasonable time, without an error or timeout</td><td>Every request <i>eventually</i> gets a valid response; errors don’t count</td></tr>
+            <tr><td><b>P</b></td><td>The system keeps working when the network splits</td><td>The network may drop any message</td></tr>
           </tbody>
         </table>
       </div>
 
-      <h3 id="precise">The precise terms</h3>
-      <p>Robinson’s FAQ states the theorem exactly: it is impossible to build an implementation of <b>read-write storage</b> in an <b>asynchronous network</b> that is available, consistent and partition-tolerant all at once. Informally, you can’t build a database that both responds to every request <i>and</i> always returns the results you’d expect.<a class="src" href="#s4">[4]</a> The intermediary terms:</p>
       <h4>Read-write storage (a register)</h4>
-      <p>CAP is about a <b>register</b>, a data structure with two operations: <code>set(X)</code> stores X, and <code>get()</code> returns the last value set. A key-value store can be modelled as many registers, so this simple object captures what most distributed stores do: write data and read it back.<a class="src" href="#s4">[4]</a></p>
+      <p>CAP is about a <b>register</b>, a data structure with two operations: <code>set(X)</code> stores X, and <code>get()</code> returns the last value set. Our <code>x</code> is a register, and a key-value store is simply many of them.<a class="src" href="#s4">[4]</a></p>
+
       <h4>Atomic (linearizable) consistency</h4>
-      <p>The register must look to every client as if it ran on <b>one machine</b>, answering operations in the order they arrive. The results of all clients’ operations, even concurrent ones, must match a single <b>serial</b> (one-after-another) execution.<a class="src" href="#s4">[4]</a><a class="src" href="#s8">[8]</a> This is very strong. It rules out <b>eventual consistency</b>, which allows a delay before a write becomes visible (Unit 5). It also respects <b>external communication</b>: if I read a value and tell you about it, you must be able to read it too.</p>
+      <p>The register must behave, for every client, as if it lived on <b>one machine</b> that handled operations in the order they arrived. Whatever clients do, even at the same time, the results must match a single <b>serial</b> (one-after-another) run of all the operations.<a class="src" href="#s4">[4]</a><a class="src" href="#s8">[8]</a> This rules out <b>eventual consistency</b>, where a write may take a while to become visible (Unit 5). It also respects conversations between clients: if A reads a value and tells B, B must be able to read it too.<a class="src" href="#s4">[4]</a></p>
       <div class="tablewrap">
-        <table class="hist">
-          <caption class="tcap"><b>Table 4.2</b> Robinson’s example histories (<code>A:</code> / <code>B:</code> = which client runs the operation)</caption>
+        <table>
+          <caption class="tcap"><b>Table 4.2</b> Which histories are atomic? (<code>A:</code> / <code>B:</code> = the client running the operation)</caption>
           <thead><tr><th>History</th><th>Atomic?</th><th>Why</th></tr></thead>
           <tbody>
-            <tr><td><code>set(10), set(5), get() = 10</code></td><td style="color:var(--bad)">✗</td><td>Allowed under eventual consistency (the newer write isn’t visible yet), not under atomic</td></tr>
-            <tr><td><code>B:set(5), A:set(10), A:get() = 10, B:get() = 10</code></td><td style="color:var(--good)">✓</td><td>Everyone sees the last write</td></tr>
-            <tr><td><code>B:set(5), A:set(10), A:get() = 10, B:get() = 5</code></td><td style="color:var(--bad)">✗</td><td>Matches <i>some</i> serial order, so it is <b>serializable</b>, a weaker guarantee. But if A tells B “it’s 10”, B’s read of 5 makes no sense</td></tr>
+            <tr><td><code>set(10), set(5), get() = 10</code></td><td style="color:var(--bad)">✗</td><td>The newer write isn’t visible yet: allowed under eventual consistency, not under atomic</td></tr>
+            <tr><td><code>B:set(5), A:set(10), A:get() = 10, B:get() = 10</code></td><td style="color:var(--good)">✓</td><td>Every client sees the last write</td></tr>
+            <tr><td><code>B:set(5), A:set(10), A:get() = 10, B:get() = 5</code></td><td style="color:var(--bad)">✗</td><td>It matches <i>some</i> serial order, so it is <b>serializable</b>, a weaker guarantee. But if A tells B “it’s 10”, B’s read of 5 makes no sense</td></tr>
           </tbody>
         </table>
       </div>
-      <p style="font-size:.85rem;color:var(--muted)">All three histories are from the CAP FAQ, §4.<a class="src" href="#s4">[4]</a></p>
-      <h4>Asynchronous network</h4>
-      <p>A network with <b>no bound</b> on how long a message takes to be delivered or processed. The key consequence: a node cannot tell a machine that has <b>failed</b> from one whose messages are merely <b>delayed</b>. Robinson argues real networks are effectively asynchronous, since clocks drift and retries or garbage-collection pauses can delay any message.<a class="src" href="#s4">[4]</a></p>
-      <h4>Available (formally)</h4>
-      <p>Every <code>get</code> and <code>set</code> must <b>eventually</b> return a valid response. <b>Errors don’t count</b>, otherwise a system could be “available” by always failing. The requirement is strong (100% of requests, no partial credit) and weak (no time limit, as long as it’s finite) at once.<a class="src" href="#s4">[4]</a></p>
+      <p style="font-size:.85rem;color:var(--muted)">All three histories are from §4 of the source.<a class="src" href="#s4">[4]</a></p>
+
+      <h4>Available, exactly</h4>
+      <p>Every <code>get</code> and <code>set</code> must <b>eventually</b> return a valid response. Error responses don’t count, otherwise a system could be “available” by always failing. The requirement is strong (every single request, no partial credit) and weak (no time limit, as long as the wait is finite) at the same time.<a class="src" href="#s4">[4]</a></p>
+
       <h4>Partition</h4>
-      <p>The network <b>loses</b> some messages to one or more nodes. Delay is not a partition: a message that eventually arrives was only slow. A <b>total partition</b> is a period in which <i>no</i> messages pass between two groups of nodes. CAP’s proof uses a total partition, and Robinson notes these are realistic, because traffic between two nodes often flows through a single component that can fail.<a class="src" href="#s4">[4]</a></p>
+      <p>A <b>partition</b> happens when the network <b>loses</b> messages to one or more nodes. Delay is not a partition: a message that eventually arrives was only slow. A <b>total partition</b> is a period in which <i>no</i> messages pass between two groups of nodes. The proof uses a total partition, and these are realistic, because traffic between two nodes often passes through a single piece of equipment that can fail.<a class="src" href="#s4">[4]</a></p>
+
+      <h4>Asynchronous network</h4>
+      <p>A network with <b>no upper bound</b> on how long a message takes to be delivered or processed. The consequence that matters: a node cannot tell a machine that has <b>failed</b> from one whose messages are only <b>delayed</b>. Real networks count as asynchronous, since clocks drift and retries or garbage-collection pauses can delay any message.<a class="src" href="#s4">[4]</a></p>
       <div class="tablewrap">
         <table>
-          <caption class="tcap"><b>Table 4.3</b> Failed, slow and partitioned nodes are different things</caption>
-          <thead><tr><th>Node is…</th><th>Messages reach it?</th><th>Must it answer clients?</th></tr></thead>
+          <caption class="tcap"><b>Table 4.3</b> Failed, slow and partitioned nodes are different</caption>
+          <thead><tr><th>Node is…</th><th>Do messages reach it?</th><th>Must it answer clients?</th></tr></thead>
           <tbody>
-            <tr><td><b>Failed</b></td><td>—</td><td>No: a failed machine is usually excused. CAP allows <i>no</i> failed machines, which makes it a strong result</td></tr>
+            <tr><td><b>Failed</b></td><td>—</td><td>No: a failed machine is usually excused. CAP allows <i>no</i> failed machines, which makes the result stronger</td></tr>
             <tr><td><b>Slow</b></td><td>Yes, eventually</td><td>Yes</td></tr>
-            <tr><td><b>Partitioned</b></td><td>Never (lost)</td><td>Yes: it is still up, just cut off</td></tr>
+            <tr><td><b>Partitioned</b></td><td>Never (they are lost)</td><td>Yes: it is still running, just cut off</td></tr>
           </tbody>
         </table>
       </div>
-      <p style="font-size:.85rem;color:var(--muted)">From CAP FAQ §15–16.<a class="src" href="#s4">[4]</a> Slow machines are what make lost messages hard to detect, which is at the heart of why CAP holds.</p>
+      <p style="font-size:.85rem;color:var(--muted)">Summarised from §15–16 of the source.<a class="src" href="#s4">[4]</a> Because a slow node looks like a cut-off one, lost messages are hard to detect, and that difficulty is at the heart of why CAP holds.</p>
+      <p>With the terms fixed, the proof itself takes only one scenario.</p>
+    </section>
 
-      <h3 id="proof">Why CAP is true</h3>
-      <p>The idea of the proof is a single scenario.<a class="src" href="#s4">[4]</a> A client writes to a node on one side of a partition. A read then arrives at a node on the other side, which cannot possibly know about that write. The second node has two options, and each breaks one guarantee:</p>
+    <!-- ===================== 4.3 ===================== -->
+    <section id="proof">
+      <h2><span class="num">4.3</span>Why all three can’t hold</h2>
+      <p>Cut the network between our two nodes. Client A writes <code>x = 2</code> to Node 1, but the update never reaches Node 2. Client B then reads <code>x</code> from Node 2, which cannot know about the write. Node 2 has only two moves, and each breaks one guarantee:<a class="src" href="#s4">[4]</a></p>
       <ul>
-        <li>Answer with what it has: <b>possibly stale</b>, so consistency is lost.</li>
-        <li>Wait (potentially forever) to hear from the other side: availability is lost.</li>
+        <li>Answer with what it has, <code>x = 1</code>: the answer is <b>stale</b>, so consistency is lost.</li>
+        <li>Wait, possibly forever, to hear from Node 1, or give up with an error: availability is lost.</li>
       </ul>
       <figure>
         <div class="figwrap">
-          <svg viewBox="0 0 640 320" role="img" aria-labelledby="f2t">
+<svg viewBox="0 0 640 320" role="img" aria-labelledby="f2t">
             <title id="f2t">Client A writes x equals 2 to node 1. The update sent to node 2 is lost at the partition. Client B reads x from node 2, which must either wait and time out or error (CP) or return the stale value 1 (AP).</title>
             <defs><marker id="ah1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="s-arrow"/></marker></defs>
             <rect x="16" y="44" width="120" height="52" rx="8" class="s-box"/>
@@ -373,71 +398,124 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
             <text x="536" y="304" text-anchor="middle" class="s-ts">(gives up C)</text>
           </svg>
         </div>
-        <figcaption><b>Figure 4.2</b> The scenario behind the proof, as described in the CAP FAQ.<a class="src" href="#s4">[4]</a> Node 2 cannot see the write, so it must give up either a correct answer or an answer at all. Values are illustrative.</figcaption>
+        <figcaption><b>Figure 4.2</b> The scenario behind the proof.<a class="src" href="#s4">[4]</a> Node 2 cannot see the write, so it must give up either a correct answer or an answer at all. Values are illustrative.</figcaption>
       </figure>
-      <p>This is a <b>proof by construction</b>: it shows one situation where C and A can’t both hold. Robinson calls that a <b>critical condition</b>. CAP says nothing about how often it happens; until it does, a system can be consistent <i>and</i> available. But both guarantees are all-or-nothing (one stale read or one unanswered write breaks them), and a long-running system serving millions of requests will likely hit the critical condition, so you should know which guarantee yours gives up.<a class="src" href="#s4">[4]</a></p>
 
-      <h3 id="no-ca">Why “CA” isn’t a choice</h3>
-      <p>The primer’s key line: <i>networks aren’t reliable, so you’ll need to support partition tolerance</i>, and the real decision is a software trade-off between consistency and availability.<a class="src" href="#s1">[1]</a> Greiner makes the same point: you have fewer options than “pick two” suggests, because you can’t opt out of partitions.<a class="src" href="#s2">[2]</a> Robinson explains why “choose two” misleads: partition tolerance isn’t something you build; your system either might experience partitions or it won’t, and every distributed system might. He rewrites the theorem as:<a class="src" href="#s4">[4]</a></p>
-      <div class="callout tip"><span class="label">CAP, restated</span><p style="text-align:center"><code>Possibility of Partitions ⇒ Not (C and A)</code></p><p>If your system may experience partitions, it cannot always be both consistent and available. Systems that truly can’t partition, such as a single-site database, are outside the setting where CAP is useful. Calling a <i>distributed</i> database “CA” signals a misunderstanding.<a class="src" href="#s4">[4]</a></p></div>
-    </section>
+      <h3 id="critical">The critical condition</h3>
+      <p>This is a <b>proof by construction</b>: one situation in which C and A cannot both hold is enough. Call it a <b>critical condition</b>. CAP says nothing about how often it occurs, and until it does a system can be both consistent <i>and</i> available. But both guarantees are all-or-nothing, so a single stale read or a single unanswered write breaks them. A long-running system serving millions of requests will very likely meet the critical condition, so a designer needs to know which guarantee it gives up when that happens.<a class="src" href="#s4">[4]</a></p>
 
-    <!-- ===================== 4.3 ===================== -->
-    <section id="cp">
-      <h2><span class="num">4.3</span>CP: consistency and partition tolerance</h2>
-      <p>During a partition, a CP system keeps answers correct by refusing to guess. Waiting for a response from the partitioned node might end in a <b>timeout error</b>;<a class="src" href="#s1">[1]</a> depending on the scenario, the system may instead return an <b>error</b> straight away.<a class="src" href="#s2">[2]</a></p>
-      <div class="callout tip"><span class="label">Choose CP when</span><p>Business needs require <b>atomic reads and writes</b>: a stale answer is worse than no answer.<a class="src" href="#s1">[1]</a><a class="src" href="#s2">[2]</a> Robinson’s example of a real system that relaxes availability because consistency matters most is <b>ZooKeeper</b>.<a class="src" href="#s4">[4]</a></p></div>
+      <h3 id="no-ca">Why “CA” is not an option</h3>
+      <p>Figure 4.1 suggests three pairs, but one of them can’t be chosen. Partition tolerance is not a feature you build. A system either might suffer partitions or it won’t, and every distributed system might, because no network is 100% reliable. You will need to tolerate partitions, so the real decision is a software trade-off between consistency and availability.<a class="src" href="#s1">[1]</a><a class="src" href="#s2">[2]</a><a class="src" href="#s4">[4]</a> The theorem is therefore better stated as:</p>
+      <div class="callout tip"><span class="label">CAP, restated</span><p style="text-align:center"><code>Possibility of Partitions ⇒ Not (C and A)</code></p><p>If a system may experience partitions, it cannot always be both consistent and available. Systems that truly cannot partition, such as a single-site database, are outside the setting where CAP is useful. Describing a <i>distributed</i> database as “CA” signals a misunderstanding.<a class="src" href="#s4">[4]</a></p></div>
+      <p>That leaves two real options for what Node 2 does during a partition.</p>
     </section>
 
     <!-- ===================== 4.4 ===================== -->
-    <section id="ap">
-      <h2><span class="num">4.4</span>AP: availability and partition tolerance</h2>
-      <p>During a partition, an AP system keeps answering. Responses return the most readily available version of the data on whichever node is reached, which might not be the latest. Writes are accepted and may take time to <b>propagate</b> once the partition is resolved.<a class="src" href="#s1">[1]</a><a class="src" href="#s2">[2]</a></p>
-      <div class="callout tip"><span class="label">Choose AP when</span><p>The business can allow for <b>eventual consistency</b> (Unit 5), or the system must keep working despite external errors.<a class="src" href="#s1">[1]</a> Greiner’s example is a <b>shopping cart</b>, which should keep working even when parts of the system fail.<a class="src" href="#s2">[2]</a> Robinson cites <b>Amazon’s Dynamo</b> as a system that relaxes consistency to stay highly available.<a class="src" href="#s4">[4]</a></p></div>
+    <section id="choose">
+      <h2><span class="num">4.4</span>Choosing CP or AP</h2>
+
+      <h3 id="cp-ap">The two pure designs</h3>
+      <p><b>CP (consistency + partition tolerance)</b> takes the “wait” branch of Figure 4.2. Node 2 waits for the partitioned Node 1, and the wait might end in a <b>timeout error</b>. Depending on the case, it may return an error straight away instead.<a class="src" href="#s1">[1]</a><a class="src" href="#s2">[2]</a> Client B never sees a wrong <code>x</code>, but may see no <code>x</code> at all.</p>
+      <p><b>AP (availability + partition tolerance)</b> takes the “answer” branch. Node 2 returns the most readily available version of the data it holds, which might not be the latest. It also keeps accepting writes, which may take some time to <b>propagate</b> to the other side once the partition heals.<a class="src" href="#s1">[1]</a><a class="src" href="#s2">[2]</a> Client B always gets an <code>x</code>, but it may be the old one.</p>
       <div class="tablewrap">
         <table>
           <caption class="tcap"><b>Table 4.4</b> CP vs AP during a partition</caption>
           <thead><tr><th></th><th>CP</th><th>AP</th></tr></thead>
           <tbody>
-            <tr><td><b>Read on the cut-off side</b></td><td>Waits; may time out or return an error</td><td>Returns the local copy, possibly stale</td></tr>
-            <tr><td><b>Writes</b></td><td>Not accepted unless they can be applied consistently</td><td>Accepted; synced after the partition heals</td></tr>
-            <tr><td><b>Gives up</b></td><td>Availability</td><td>Consistency (temporarily)</td></tr>
-            <tr><td><b>Fits</b></td><td>Atomic reads/writes required</td><td>Eventual consistency acceptable; must keep working</td></tr>
-            <tr><td><b>Example</b></td><td>ZooKeeper</td><td>Shopping cart; Amazon Dynamo</td></tr>
+            <tr><td><b>Read on the cut-off side</b></td><td>Waits; may time out or return an error<a class="src" href="#s1">[1]</a><a class="src" href="#s2">[2]</a></td><td>Returns the local copy, possibly stale<a class="src" href="#s1">[1]</a><a class="src" href="#s2">[2]</a></td></tr>
+            <tr><td><b>Writes</b></td><td>Not accepted unless they can be applied consistently (follows from C)</td><td>Accepted; synced after the partition heals<a class="src" href="#s1">[1]</a><a class="src" href="#s2">[2]</a></td></tr>
+            <tr><td><b>Gives up</b></td><td>Availability</td><td>Consistency, temporarily</td></tr>
+            <tr><td><b>Choose it when</b></td><td>The business needs atomic reads and writes<a class="src" href="#s1">[1]</a><a class="src" href="#s2">[2]</a></td><td>The business can allow eventual consistency, or the system must keep working despite external errors<a class="src" href="#s1">[1]</a></td></tr>
+            <tr><td><b>Example</b></td><td>ZooKeeper, which relaxes availability because consistency matters most<a class="src" href="#s4">[4]</a></td><td>A shopping cart<a class="src" href="#s2">[2]</a>; Amazon’s Dynamo, which relaxes consistency to stay highly available<a class="src" href="#s4">[4]</a></td></tr>
           </tbody>
         </table>
       </div>
-      <p style="font-size:.85rem;color:var(--muted)">Rows 1–4 from the primer and Greiner;<a class="src" href="#s1">[1]</a><a class="src" href="#s2">[2]</a> the CP write behaviour follows from the definition of C; examples from Greiner and the CAP FAQ.<a class="src" href="#s4">[4]</a></p>
+
+      <h3 id="atm">With real money: two ATMs</h3>
+      <p>Replace <code>x</code> with a bank balance. A bank has one customer account and two ATMs, and each ATM stores its own copy of the balance. The ATMs support deposits, withdrawals and balance checks, and the bank keeps one <b>invariant</b>, a rule that must always hold: the balance never goes below zero. While the network works, each deposit or withdrawal updates the balance on both ATMs before the transaction completes, so the copies always agree and the customer can do anything.<a class="src" href="#s5">[5]</a></p>
+      <p>Now the link between the ATMs fails. A working ATM that can’t reach the other one has no idea whether the network or the other ATM is at fault; all it knows is that the other side didn’t answer. That is a partition, and it forces the same choice as Figure 4.2:<a class="src" href="#s5">[5]</a></p>
+      <ul>
+        <li>A <b>consistent design</b> refuses deposits and withdrawals, because it can’t update the other copy: “It’s not safe.” The money is protected, but the ATM is useless until the network returns.</li>
+        <li>An <b>available design</b> does its best: it accepts deposits and withdrawals, keeps a record of what happened, and tells the other ATM once the partition <b>heals</b>. The ATM keeps working, but in the meantime the two copies of the balance disagree.<a class="src" href="#s5">[5]</a></li>
+      </ul>
+
+      <h3 id="degrees">Degrees in between</h3>
+      <p>Real designs don’t have to pick an end. Consistency and availability come in degrees, and a system can trade a little of one for a little of the other.<a class="src" href="#s5">[5]</a> During a partition the bank could choose any point along this line:</p>
+      <figure>
+        <div class="figwrap">
+          <svg viewBox="0 0 640 230" role="img" aria-labelledby="f5t">
+            <title id="f5t">Five ATM designs during a partition, from refusing everything (most consistent) to accepting everything (most available), with the risk each one takes.</title>
+            <defs><marker id="ah4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="s-arrow"/></marker><marker id="ah4b" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10,0 L0,5 L10,10 z" class="s-arrow"/></marker></defs>
+            <rect x="8" y="16" width="120" height="62" rx="8" class="s-acc"/>
+            <text x="68" y="40" text-anchor="middle" class="s-tb">Refuse deposits</text><text x="68" y="56" text-anchor="middle" class="s-tb">and withdrawals</text><text x="68" y="71" text-anchor="middle" class="s-tm">pure CP</text>
+            <rect x="134" y="16" width="120" height="62" rx="8" class="s-box"/>
+            <text x="194" y="40" text-anchor="middle" class="s-tb">Deposits only</text><text x="194" y="56" text-anchor="middle" class="s-ts">no balance, no</text><text x="194" y="70" text-anchor="middle" class="s-ts">withdrawals</text>
+            <rect x="260" y="16" width="120" height="62" rx="8" class="s-box"/>
+            <text x="320" y="40" text-anchor="middle" class="s-tb">+ balance,</text><text x="320" y="56" text-anchor="middle" class="s-tb">marked tentative</text>
+            <rect x="386" y="16" width="120" height="62" rx="8" class="s-box"/>
+            <text x="446" y="40" text-anchor="middle" class="s-tb">+ small,</text><text x="446" y="56" text-anchor="middle" class="s-tb">rate-limited</text><text x="446" y="71" text-anchor="middle" class="s-tb">withdrawals</text>
+            <rect x="512" y="16" width="120" height="62" rx="8" class="s-warm"/>
+            <text x="572" y="40" text-anchor="middle" class="s-tb">Accept everything,</text><text x="572" y="56" text-anchor="middle" class="s-tb">reconcile later</text><text x="572" y="71" text-anchor="middle" class="s-tm">pure AP</text>
+            <line x1="20" y1="118" x2="620" y2="118" class="s-line" marker-end="url(#ah4)" marker-start="url(#ah4b)"/>
+            <g><circle cx="68" cy="118" r="6" fill="var(--accent)"/><circle cx="194" cy="118" r="6" fill="var(--muted)"/><circle cx="320" cy="118" r="6" fill="var(--muted)"/><circle cx="446" cy="118" r="6" fill="var(--muted)"/><circle cx="572" cy="118" r="6" fill="var(--warm)"/></g>
+            <g class="s-ts" text-anchor="middle">
+              <text x="68" y="146">ATM unusable;</text><text x="68" y="160">balance always right</text>
+              <text x="194" y="146">copies disagree,</text><text x="194" y="160">but can’t go negative</text>
+              <text x="320" y="146">shown balance is</text><text x="320" y="160">probably right</text>
+              <text x="446" y="146">can go negative,</text><text x="446" y="160">but not far or fast</text>
+              <text x="572" y="146">copies diverge;</text><text x="572" y="160">merge after healing</text>
+            </g>
+            <text x="20" y="200" class="s-tb" style="fill:var(--accent)">← more consistent</text>
+            <text x="620" y="200" text-anchor="end" class="s-tb" style="fill:var(--warm)">more available →</text>
+            <text x="320" y="222" text-anchor="middle" class="s-ts">each step right serves more requests and takes on more risk</text>
+            <g class="anim"><circle r="5" class="s-dot2"><animateMotion dur="6s" repeatCount="indefinite" path="M68,118 L572,118"/></circle></g>
+          </svg>
+        </div>
+        <figcaption><b>Figure 4.3</b> Partial availability: ATM designs ordered from most consistent to most available, with the risk each one accepts during a partition.<a class="src" href="#s5">[5]</a> The middle three are all partly available.</figcaption>
+      </figure>
+      <p>Each middle option is <b>partially available</b>. Accepting only deposits keeps the balance from going negative, although the copies still disagree. Showing the balance but marking it <b>tentative</b> admits it may be wrong, though it is probably right unless the customer has been running between ATMs. Allowing only small, <b>rate-limited</b> withdrawals means a balance that does go negative can’t go far quickly, which bounds the bank’s risk. Past that, the bank is left with after-the-fact remedies such as fees or, at worst, legal action.<a class="src" href="#s5">[5]</a></p>
+
+      <h3 id="cost">What availability costs</h3>
+      <p>Every step towards availability adds complexity. Consistent designs tend to be simpler to build, understand and use, at the cost of some, or a lot of, availability. An available design also has to <b>reconcile</b> the copies after the partition heals. For a balance that is easy, because simple addition and subtraction combine the changes. With more complicated data structures, merging conflicting changes becomes harder or even impossible, much like a difficult <code>git merge</code>.<a class="src" href="#s5">[5]</a></p>
+      <p>Giving up consistency is also not the only way to raise availability. Making failures rarer helps too: battery backups against power cuts, better-protected network links, redundant connections so one failure can be routed around, and better testing to cut down on bugs.<a class="src" href="#s5">[5]</a></p>
+
+      <h3 id="which">Which to pick</h3>
+      <p>The deciding question is which failure the business can live with: a wrong answer or no answer. You control how the system behaves during a partition, not whether partitions happen, so this is worth settling early in a design.<a class="src" href="#s2">[2]</a> Two contrasting cases:<a class="src" href="#s5">[5]</a></p>
+      <ul>
+        <li><b>Machines in one data centre.</b> Network failures may be rare enough that a simple consistent design is acceptable, and the system just goes down on the rare occasion the network fails. In CAP terms this is still a CP choice: availability is given up during a partition. It is not CA, because the partition is still possible (§4.3).<a class="src" href="#s4">[4]</a></li>
+        <li><b>Offline use.</b> A system that lets people keep working while disconnected, such as an editor for documents used offline, has to choose availability and sync the changes back later.</li>
+      </ul>
+      <p>Either way, the decision CAP puts in front of a designer comes down to one question: may copies of the data get out of sync with each other, or not?<a class="src" href="#s5">[5]</a></p>
     </section>
 
     <!-- ===================== 4.5 ===================== -->
     <section id="story">
-      <h2><span class="num">4.5</span>CAP in plain English</h2>
-      <p>Kaushik Sathupadi explains CAP through a story about a two-person phone business. The people are the <b>nodes</b>, their notebooks are the <b>replicated data</b>, and the customers are <b>clients</b>.<a class="src" href="#s3">[3]</a></p>
+      <h2><span class="num">4.5</span>The same choice in plain English</h2>
+      <p>The whole argument can be retold without registers or networks. In this version, two people take the place of the two nodes, their notebooks are the copies of the data, and the callers are the clients.<a class="src" href="#s3">[3]</a></p>
 
       <h3 id="story-steps">Remembrance Inc.</h3>
-      <p>The narrator starts a service: customers call to have him remember something (a boss’s phone number, say) and call back later to retrieve it, paying per call. As it grows, one person is too few: callers queue and hang up, and a sick day closes the business. So his wife joins, each has an extension phone, customers dial the same number, and a phone exchange (PBX) routes each call to whoever is free.<a class="src" href="#s3">[3]</a> Each step of the story then exposes one CAP property:</p>
+      <p>A man starts a phone service: customers call to have him remember something, such as a boss’s phone number, and call back later to retrieve it, paying per call. Business grows until one person isn’t enough. Callers queue and hang up, and a sick day closes the business. So his wife joins. Each has an extension phone, customers still dial one number, and a phone exchange (PBX) routes each call to whoever is free.<a class="src" href="#s3">[3]</a> One node has become two, as in §4.1, and each step that follows runs into a guarantee from §4.2:</p>
       <div class="tablewrap">
         <table>
           <caption class="tcap"><b>Table 4.5</b> The story, mapped to CAP</caption>
           <thead><tr><th>What happens</th><th>CAP lesson</th></tr></thead>
           <tbody>
-            <tr><td>A customer’s update lands in the wife’s notebook; his next call reaches the husband, whose notebook lacks it, so he gets a wrong answer.</td><td><b>Consistency</b> is broken: two nodes give different answers.</td></tr>
-            <tr><td>Fix: every update must involve both of them, and neither takes other calls until both notebooks are written. Searches, most of the traffic, carry on normally.</td><td>Consistent, at the cost of slower updates.</td></tr>
-            <tr><td>The wife points out that if one of them is off work, no update can complete.</td><td><b>Availability</b> is broken.</td></tr>
-            <tr><td>The narrator revises the plan so it handles absences, and claims it is now consistent <i>and</i> available. His wife can’t find a flaw.</td><td>C + A looks possible… while nothing is partitioned.</td></tr>
-            <tr><td>Both are at work, but the wife, angry with him, refuses to pass on updates for a day.</td><td>A <b>partition</b>: both nodes are up but can’t communicate.</td></tr>
-            <tr><td>His options: keep taking calls and risk wrong answers, or stop taking calls until they reconcile.</td><td>Keep serving = give up C (AP). Stop = give up A (CP).</td></tr>
+            <tr><td>A customer, John, calls to store his flight date and the call reaches the wife. When he calls back to ask for it, the call reaches the husband, whose notebook has no entry, and John is told he never mentioned a flight.</td><td><b>Consistency</b> is broken: two nodes give different answers.</td></tr>
+            <tr><td>Fix: before finishing an update call, tell the other person, so both notebooks are written; look-ups need only one’s own notebook. Neither can take other calls during an update, which is acceptable because most calls are look-ups.</td><td>Consistent again, at the cost of blocking during updates.</td></tr>
+            <tr><td>If one of them is off work, no update can be completed.</td><td><b>Availability</b> is broken.</td></tr>
+            <tr><td>Revised plan: update the other person if they are at work; if they are absent, email them the update, and on their return they read all the emails and update their notebook before taking a call. The system is now claimed to be consistent <i>and</i> available, and no flaw is found.</td><td>C and A can both hold… while nothing is partitioned (the critical condition hasn’t occurred).</td></tr>
+            <tr><td>Both come to work, but the wife, angry with her husband, keeps taking calls and refuses to pass on any updates for a day.</td><td>A <b>partition</b>: both nodes are up, but they can’t communicate.</td></tr>
+            <tr><td>The plan breaks. They can stay correct only by taking no calls until they make up; carrying on means the notebooks disagree.</td><td>Keep serving = give up C (AP). Stop = give up A (CP).</td></tr>
           </tbody>
         </table>
       </div>
-      <p style="font-size:.85rem;color:var(--muted)">Paraphrased from Sathupadi’s chapters 1–7.<a class="src" href="#s3">[3]</a> The details of the revised plan in row 4 did not load from the page, so only its claim is given here.</p>
+      <p style="font-size:.85rem;color:var(--muted)">Paraphrased from chapters 1–7 of the story.<a class="src" href="#s3">[3]</a> Row 4 is the key step: the email plan copes with an <i>absent</i> node (a failure), but not with two working nodes that can’t talk (a partition), the same distinction as Table 4.3.</p>
 
-      <h3 id="clerk">The run-around clerk (eventual consistency)</h3>
-      <p>In a bonus chapter, a <b>run-around clerk</b> copies each new entry into the other person’s notebook in the background. Updates no longer block the phones. Sathupadi notes this is how many NoSQL systems work: one node updates locally and a background process syncs the rest. The cost is a window of inconsistency: a customer who calls back before the clerk arrives may get the old answer, which is acceptable if the window is short (for example, if customers don’t call back within five minutes).<a class="src" href="#s3">[3]</a> This is <b>eventual consistency</b>, the AP-friendly pattern covered in Unit 5.</p>
+      <h3 id="clerk">The run-around clerk</h3>
+      <p>The story ends by showing how to live with the AP choice. A <b>run-around clerk</b> copies each new entry into the other notebook in the background, so updates no longer hold up the phones. Many NoSQL systems work this way: one node updates locally and a background process syncs the rest. The cost is a window in which the copies disagree. A customer who calls back before the clerk arrives may hear the old answer, which is acceptable as long as such cases are limited, for example if customers don’t call back within five minutes.<a class="src" href="#s3">[3]</a> This is <b>eventual consistency</b>, the AP-friendly pattern covered in Unit 5.</p>
       <figure>
         <div class="figwrap">
-          <svg viewBox="0 0 640 330" role="img" aria-labelledby="f3t">
+<svg viewBox="0 0 640 330" role="img" aria-labelledby="f3t">
             <title id="f3t">A customer's update is written to the wife's notebook immediately. A clerk carries it to the husband's notebook in the background. Until the clerk arrives, a read from the husband's notebook returns the old value.</title>
             <defs><marker id="ah3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="s-arrow"/></marker></defs>
             <rect x="16" y="20" width="130" height="50" rx="8" class="s-box"/><text x="81" y="42" text-anchor="middle" class="s-tb">Customer</text><text x="81" y="60" text-anchor="middle" class="s-tm">update</text>
@@ -466,22 +544,22 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
             <text x="250" y="330" text-anchor="middle" class="s-ts" style="fill:var(--warm)">→ old value</text>
           </svg>
         </div>
-        <figcaption><b>Figure 4.3</b> The run-around clerk from Sathupadi’s bonus chapter.<a class="src" href="#s3">[3]</a> Writes return immediately (t₁); the copy arrives later (t₂). A read that reaches the husband’s notebook between the two returns the old value. Timings are illustrative.</figcaption>
+        <figcaption><b>Figure 4.4</b> The run-around clerk.<a class="src" href="#s3">[3]</a> Writes return immediately (t₁) and the copy arrives later (t₂). A read that reaches the husband’s notebook between the two returns the old value. Timings are illustrative.</figcaption>
       </figure>
     </section>
 
     <!-- ===================== 4.6 ===================== -->
-    <section id="misconceptions">
-      <h2><span class="num">4.6</span>Common misconceptions</h2>
-      <p>Robinson wrote the FAQ to settle frequent misunderstandings.<a class="src" href="#s4">[4]</a></p>
+    <section id="limits">
+      <h2><span class="num">4.6</span>What CAP does not say</h2>
+      <p>Because CAP is short and widely quoted, it is often stretched beyond what it proves.<a class="src" href="#s4">[4]</a></p>
       <ul>
-        <li><b>“CAP means we can’t build useful distributed systems.”</b> No. It is an impossibility result, not a death knell; it tells you which constraints to design within.</li>
-        <li><b>“C and A are on/off.”</b> Real systems <b>relax</b> one or both from CAP’s strict definitions, and must; the job is knowing when and how yours does. Weaken any assumption of the theorem, though, and its proof no longer applies.</li>
-        <li><b>“If no messages are lost, we can have both.”</b> Not in an asynchronous network: Gilbert and Lynch showed no atomic register there can be always available <i>and</i> consistent whenever messages aren’t lost, because a node can’t tell a lost message from a slow one. (In a <b>partially synchronous</b> network, with bounded message processing time, this particular result no longer holds.)</li>
-        <li><b>“CAP is the same as FLP.”</b> The FLP theorem (Fischer, Lynch and Paterson) says <b>consensus</b>, all nodes agreeing on one value, is unsolvable in general in an asynchronous network where one node may fail. Both are impossibility results, but FLP allows one failed node, forbids message loss, and concerns consensus rather than atomic storage.</li>
-        <li><b>“We beat CAP.”</b> You haven’t. At best you’ve built a system that isn’t heavily affected by it.</li>
+        <li><b>It does not forbid useful distributed systems.</b> It is an impossibility result, not a death sentence: it marks the constraints to design within.</li>
+        <li><b>C and A are not on/off switches.</b> Real systems relax one or both from CAP’s strict definitions, and they must, as the partly available ATMs in §4.4 show. The designer’s job is to know when and how theirs does. Once any assumption of the theorem is weakened, though, its proof no longer applies, and any new impossibility claim has to be proved again.</li>
+        <li><b>A network that never loses messages is not enough.</b> In an asynchronous network, no atomic register can be always available <i>and</i> consistent whenever no messages are lost, because a node cannot tell a lost message from a slow one. In a <b>partially synchronous</b> network, where nodes have clocks that are not synchronised but there is a bound on how long each message takes to process, this particular result no longer holds (available atomic storage is still impossible there).</li>
+        <li><b>It is not the same as FLP.</b> The FLP result (Fischer, Lynch and Paterson) shows that <b>consensus</b>, getting all nodes to agree on one value, cannot be solved in general in an asynchronous network where one node may fail. Both are impossibility results, but FLP allows one failed node, does not allow message loss, and is about consensus rather than atomic storage.</li>
+        <li><b>It cannot be “beaten”.</b> At best, a system is designed so that CAP does not affect it much.</li>
       </ul>
-      <div class="callout warn"><span class="label">In an interview</span><p>Don’t call a distributed design “CA”. Assume partitions will happen, then say which of C or A your design gives up during one, and why that suits the business (atomic reads/writes → CP; must keep working, staleness tolerable → AP).<a class="src" href="#s1">[1]</a><a class="src" href="#s4">[4]</a></p></div>
+      <div class="callout warn"><span class="label">In an interview</span><p>Don’t call a distributed design “CA”. Assume partitions will happen, then say which of C or A your design gives up during one, and why that suits the business: atomic reads and writes needed → CP; must keep working and stale data is tolerable → AP.<a class="src" href="#s1">[1]</a><a class="src" href="#s4">[4]</a></p></div>
     </section>
 
     <!-- ===================== 4.7 ===================== -->
@@ -489,16 +567,15 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
       <h2><span class="num">4.7</span>Resources</h2>
       <div class="res">
         <a href="https://github.com/donnemartin/system-design-primer#availability-vs-consistency"><b>Primer: Availability vs consistency</b><span>The source section for this unit</span></a>
-        <a href="https://robertgreiner.com/cap-theorem-revisited/"><b>CAP Theorem: Revisited</b><span>Greiner’s short article; source of the primer’s figure and CP/AP text</span></a>
+        <a href="https://robertgreiner.com/cap-theorem-revisited/"><b>CAP Theorem: Revisited</b><span>Short article; source of the CAP figure and the CP/AP descriptions</span></a>
         <a href="http://ksat.me/a-plain-english-introduction-to-cap-theorem"><b>A plain English introduction to CAP</b><span>The Remembrance Inc. story, plus eventual consistency</span></a>
-        <a href="https://github.com/henryr/cap-faq"><b>The CAP FAQ</b><span>Robinson’s precise definitions and myth-busting; read §2–10 first</span></a>
-        <a href="https://www.youtube.com/watch?v=k-Yaq8AHlFA"><b>L16: The CAP Theorem (video)</b><span>Lecture from the Distributed Systems Course YouTube channel</span></a>
-        <a href="https://users.ece.cmu.edu/~adrian/731-sp04/readings/GL-cap.pdf"><b>Gilbert &amp; Lynch (2002)</b><span>The original proof, linked from the CAP FAQ</span></a>
-        <a href="https://en.wikipedia.org/wiki/Linearizability"><b>Linearizability</b><span>More on atomic consistency, as the FAQ suggests</span></a>
-        <a href="https://github.com/donnemartin/system-design-primer#consistency-patterns"><b>Next: Consistency patterns</b><span>Weak, eventual and strong consistency (Unit 5)</span></a>
+        <a href="https://github.com/henryr/cap-faq"><b>The CAP FAQ</b><span>Precise definitions and common misconceptions; read §2–10 first</span></a>
+        <a href="https://www.youtube.com/watch?v=k-Yaq8AHlFA"><b>L16: The CAP Theorem (video)</b><span>A 7-minute lecture built on the two-ATM bank example</span></a>
+        <a href="https://users.ece.cmu.edu/~adrian/731-sp04/readings/GL-cap.pdf"><b>Gilbert &amp; Lynch (2002)</b><span>The original proof</span></a>
+        <a href="https://en.wikipedia.org/wiki/Linearizability"><b>Linearizability</b><span>More on atomic consistency</span></a>
         <a href="unit3.html"><b>Unit 3 · Latency vs throughput</b><span>The second trade-off</span></a>
+        <a href="unit5.html"><b>Unit 5 · Consistency patterns</b><span>Weak, eventual and strong consistency</span></a>
       </div>
-      <p style="font-size:.85rem;color:var(--muted)">The video’s page could not be read in full (no transcript), so this guide takes nothing from it beyond its description: a lecture on Brewer’s theorem and the consistency–availability trade-off a distributed system must make.<a class="src" href="#s5">[5]</a></p>
     </section>
 
     <!-- ===================== 4.8 ===================== -->
@@ -507,13 +584,13 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
       <ol class="sources">
         <li id="s1">D. Martin et al., <a href="https://github.com/donnemartin/system-design-primer#availability-vs-consistency">The System Design Primer: Availability vs consistency</a>, GitHub.</li>
         <li id="s2">R. Greiner, <a href="https://robertgreiner.com/cap-theorem-revisited/">CAP Theorem: Revisited</a>, 14 August 2014.</li>
-        <li id="s3">K. Sathupadi, <a href="http://ksat.me/a-plain-english-introduction-to-cap-theorem">A plain English introduction to CAP Theorem</a>, ksat.me.</li>
+        <li id="s3">K. Sathupadi, <a href="http://ksat.me/a-plain-english-introduction-to-cap-theorem">A plain English introduction to CAP Theorem</a>, ksat.me, 2009–2012 (full text supplied by the reader).</li>
         <li id="s4">H. Robinson, <a href="https://github.com/henryr/cap-faq">The CAP FAQ</a>, version 1.0, 9 May 2013.</li>
-        <li id="s5">Distributed Systems Course, <a href="https://www.youtube.com/watch?v=k-Yaq8AHlFA">L16: The CAP Theorem</a>, YouTube, 21 March 2019.</li>
+        <li id="s5">Distributed Systems Course, <a href="https://www.youtube.com/watch?v=k-Yaq8AHlFA">L16: The CAP Theorem</a>, YouTube, 21 March 2019 (about 7 minutes; auto-generated transcript supplied by the reader and checked against the other sources).</li>
         <li id="s6">S. Gilbert and N. Lynch, <a href="https://users.ece.cmu.edu/~adrian/731-sp04/readings/GL-cap.pdf">Brewer’s conjecture and the feasibility of consistent, available, partition-tolerant web services</a>, 2002 (cited by [4]).</li>
         <li id="s7">E. Brewer, <a href="http://www.cs.berkeley.edu/~brewer/cs262b-2004/PODC-keynote.pdf">Towards Robust Distributed Systems</a>, PODC keynote, 2000 (cited by [4]).</li>
         <li id="s8">Wikipedia, <a href="https://en.wikipedia.org/wiki/Linearizability">Linearizability</a> (cited by [4]).</li>
-        <li id="s9">Wikipedia, <a href="https://en.wikipedia.org/wiki/Fallacies_of_distributed_computing">Fallacies of distributed computing</a>.</li>
+        <li id="s9">Wikipedia, <a href="https://en.wikipedia.org/wiki/Fallacies_of_distributed_computing">Fallacies of distributed computing</a>. Outside source.</li>
       </ol>
     </section>
   </main>
@@ -525,6 +602,7 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
   <dl>
     <dt>Distributed system</dt><dd>Interconnected nodes that share data.</dd>
     <dt>Node</dt><dd>One machine in that system.</dd>
+    <dt>Scaling out</dt><dd>Adding more machines instead of a bigger one.</dd>
     <dt>Asynchronous network</dt><dd>No limit on message delay; failed and slow nodes look the same.</dd>
   </dl>
   <h5>CAP</h5>
@@ -535,6 +613,8 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
     <dt>Partition / total partition</dt><dd>Messages lost (not delayed) / no messages at all between two groups.</dd>
     <dt>CAP theorem</dt><dd>If partitions are possible, you can’t always have both C and A.</dd>
     <dt>Critical condition</dt><dd>The situation where C or A must give way.</dd>
+    <dt>Proof by construction</dt><dd>Proving impossibility with one concrete scenario.</dd>
+    <dt>Stale read</dt><dd>A read that returns an out-of-date value.</dd>
   </dl>
   <h5>Precise terms</h5>
   <dl>
@@ -542,12 +622,18 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
     <dt>Atomic / linearizable</dt><dd>Looks like one machine serving operations in arrival order.</dd>
     <dt>Serializable</dt><dd>Matches some serial order; weaker than atomic.</dd>
     <dt>Eventual consistency</dt><dd>Writes become visible after a delay (Unit 5).</dd>
+    <dt>Partially synchronous</dt><dd>Unsynchronised clocks, but bounded message processing time.</dd>
   </dl>
   <h5>Choices</h5>
   <dl>
     <dt>CP</dt><dd>Wait or error during a partition; for atomic reads/writes.</dd>
     <dt>AP</dt><dd>Answer with possibly stale data, sync later; when staleness is OK.</dd>
     <dt>CA</dt><dd>Not realistic for a distributed system.</dd>
+    <dt>Invariant</dt><dd>A rule that must always hold, e.g. balance ≥ 0.</dd>
+    <dt>Partially available</dt><dd>Serves some operations during a partition, refuses others.</dd>
+    <dt>Tentative</dt><dd>A value shown but marked as possibly wrong.</dd>
+    <dt>Reconcile</dt><dd>Merge the diverged copies after a partition heals.</dd>
+    <dt>Propagate</dt><dd>Spread a write to the other copies, e.g. after a partition heals.</dd>
     <dt>FLP</dt><dd>Consensus is impossible in general in an async network with one failure.</dd>
   </dl>
 </aside>
