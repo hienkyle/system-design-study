@@ -180,28 +180,14 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
   main{padding-top:24px}
 }
 @media (min-width: 961px){ .toc[hidden]{display:block!important} }
-/* ---------- theme toggle ---------- */
-.theme-btn{display:inline-grid;place-items:center;width:34px;height:34px;flex:none;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;cursor:pointer;padding:0}
-.theme-btn:hover{border-color:var(--accent);color:var(--accent)}
-.theme-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.theme-btn svg{width:17px;height:17px;display:block}
-.theme-btn .i-sun{display:none}
-:root[data-theme="dark"] .theme-btn .i-sun{display:block}
-:root[data-theme="dark"] .theme-btn .i-moon{display:none}
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]) .theme-btn .i-sun{display:block}
-  :root:not([data-theme="light"]) .theme-btn .i-moon{display:none}
-}
-.rail-actions{display:flex;align-items:center;gap:8px;min-width:0}
 </style>
-<script>(function(){try{var t=localStorage.getItem('sysdes-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 </head>
 <body>
 
 <div class="shell">
   <aside class="rail" aria-label="Contents">
     <div class="rail-head">
-      <div class="rail-actions"><a class="back" href="index.html" title="Back to all units"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>All units</a><button type="button" class="theme-btn" id="themeBtn" aria-label="Switch to dark mode" title="Switch to dark mode"><svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg><svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg></button></div>
+      <a class="back" href="index.html" title="Back to all units"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>All units</a>
       <h2>Contents</h2>
       <button class="toc-toggle" id="tocToggle" aria-expanded="false" aria-controls="toc">
         <span id="tocCurrent">Contents</span>
@@ -242,7 +228,7 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
     <header class="unit">
       <p class="eyebrow">SYSTEM DESIGN PRIMER · UNIT 5</p>
       <h1>Consistency patterns</h1>
-      <p class="lede">Unit 4 showed that a distributed system must sometimes trade consistency for availability. This unit names the levels of consistency you can choose from: weak, eventual and strong. Each answers one question: after a write, will a read see it?<a class="src" href="#s1">[1]</a> It also covers the synchronous vs asynchronous replication behind each level, the inconsistency window, why transactions need strong consistency, and Barrett’s comparison of backups, master/slave, multi-master, 2PC and Paxos across datacenters.</p>
+      <p class="lede">Unit 4 showed that a distributed system must sometimes trade consistency for availability. This unit names the levels of consistency you can choose from: weak, eventual and strong. Each answers one question: after a write, will a read see it?<a class="src" href="#s1">[1]</a></p>
       <div class="meta"><span>Primer section · Consistency patterns</span><span>Ryan Barrett · “Transactions Across Datacenters”, Google I/O 2009 (slides + talk)</span><span>Werner Vogels · “Eventually Consistent” (2009)</span></div>
     </header>
 
@@ -520,7 +506,7 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
         <a href="https://www.youtube.com/watch?v=srOgpXECblk"><b>Google I/O 2009 talk (video)</b><span>The full talk, about an hour including Q&amp;A</span></a>
         <a href="https://www.allthingsdistributed.com/2008/12/eventually_consistent.html"><b>Eventually Consistent: Revisited</b><span>Vogels’ article on the web; inconsistency window, quorums</span></a>
         <a href="unit4.html"><b>Unit 4 · Availability vs consistency</b><span>The CAP theorem these patterns build on</span></a>
-        <a href="unit6.html"><b>Next: Unit 6 · Availability patterns</b><span>Fail-over and replication</span></a>
+        <a href="https://github.com/donnemartin/system-design-primer#availability-patterns"><b>Next: Availability patterns</b><span>Fail-over and replication (Unit 6)</span></a>
       </div>
     </section>
 
@@ -634,23 +620,5 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
 })();
 </script>
 
-<script>
-(function(){
-  /* theme toggle: follows the system until the reader picks; the choice is shared by every page on the site */
-  var root = document.documentElement, btn = document.getElementById('themeBtn');
-  var mq = window.matchMedia('(prefers-color-scheme: dark)');
-  function system(){ return mq.matches ? 'dark' : 'light'; }
-  function current(){ var t = root.getAttribute('data-theme'); return (t === 'light' || t === 'dark') ? t : system(); }
-  function label(){ var next = current() === 'dark' ? 'light' : 'dark'; btn.setAttribute('aria-label', 'Switch to ' + next + ' mode'); btn.title = 'Switch to ' + next + ' mode'; }
-  btn.addEventListener('click', function(){
-    var next = current() === 'dark' ? 'light' : 'dark';
-    if(next === system()){ root.removeAttribute('data-theme'); try{ localStorage.removeItem('sysdes-theme'); }catch(e){} }
-    else { root.setAttribute('data-theme', next); try{ localStorage.setItem('sysdes-theme', next); }catch(e){} }
-    label();
-  });
-  if(mq.addEventListener) mq.addEventListener('change', label); else mq.addListener(label);
-  label();
-})();
-</script>
 </body>
 </html>
