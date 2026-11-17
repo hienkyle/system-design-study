@@ -201,24 +201,28 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
     </div>
     <nav class="toc" id="toc" hidden>
       <ol>
-        <li><a href="#definition"><span class="num">2.1</span>What “scalable” means</a>
+        <li><a href="#definition"><span class="num">2.1</span>Two different properties</a>
           <ol>
-            <li><a href="#proportional">Proportional to resources added</a></li>
-            <li><a href="#units">More work vs larger work</a></li>
+            <li><a href="#proportional">Scalable means proportional</a></li>
+            <li><a href="#units">More work or larger work</a></li>
           </ol>
         </li>
-        <li><a href="#diagnose"><span class="num">2.2</span>Performance or scalability problem?</a></li>
-        <li><a href="#hard"><span class="num">2.3</span>Why scalability is hard</a>
+        <li><a href="#diagnose"><span class="num">2.2</span>Telling the problems apart</a></li>
+        <li><a href="#causes"><span class="num">2.3</span>Why added resources stop paying off</a>
           <ol>
-            <li><a href="#redundancy">Redundancy without slowdown</a></li>
-            <li><a href="#by-design">It can’t be added later</a></li>
-            <li><a href="#heterogeneity">Heterogeneity</a></li>
+            <li><a href="#algorithms">Costs that grow faster than load</a></li>
+            <li><a href="#redundancy">Redundancy that costs performance</a></li>
+            <li><a href="#heterogeneity">Nodes that are not equal</a></li>
           </ol>
         </li>
-        <li><a href="#design"><span class="num">2.4</span>Designing for scale</a></li>
-        <li><a href="#tradeoffs"><span class="num">2.5</span>One of three trade-offs</a></li>
-        <li><a href="#resources"><span class="num">2.6</span>Resources</a></li>
-        <li><a href="#sources"><span class="num">2.7</span>Sources</a></li>
+        <li><a href="#design"><span class="num">2.4</span>Designing so resources pay off</a>
+          <ol>
+            <li><a href="#architecture">At the architecture level</a></li>
+            <li><a href="#code">At the code level</a></li>
+          </ol>
+        </li>
+                <li><a href="#resources"><span class="num">2.5</span>Resources</a></li>
+        <li><a href="#sources"><span class="num">2.6</span>Sources</a></li>
       </ol>
     </nav>
   </aside>
@@ -227,17 +231,17 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
     <header class="unit">
       <p class="eyebrow">SYSTEM DESIGN PRIMER · UNIT 2</p>
       <h1>Performance vs scalability</h1>
-      <p class="lede">The first of the primer’s three high-level trade-offs. A fast system and a scalable system are not the same thing: one is about how quickly a single request is served, the other about whether adding resources lets you serve more.<a class="src" href="#s1">[1]</a> This unit covers what “scalable” means (performance proportional to resources added), how to tell a performance problem from a scalability problem, why scaling is hard (redundancy, heterogeneity), designing for scale, and the three high-level trade-offs.</p>
-      <div class="meta"><span>Primer section · Performance vs scalability</span><span>Werner Vogels · “A Word on Scalability” (2006)</span><span>Jonas Bonér · Scalability patterns deck (2010)</span></div>
+      <p class="lede">When a system gets slow, there are two possible reasons. Either each request costs too much, or the system cannot turn extra resources into extra capacity. This unit defines the two properties, shows how to tell which one is failing, explains why scalability breaks down, and ends with how to design for it.</p>
+      <div class="meta"><span>Definition</span><span>Diagnosis</span><span>Causes</span><span>Design</span></div>
     </header>
 
     <!-- ===================== 2.1 ===================== -->
     <section id="definition">
-      <h2><span class="num">2.1</span>What “scalable” means</h2>
-      <p>Amazon CTO Werner Vogels opens his article by pointing out that “scalability” is often used loosely: saying “that doesn’t scale” can end a design argument, and usually signals that a system’s architecture limits how the service can grow. Used positively, it names a property you want a platform to have. Either way, the word needs a precise meaning.<a class="src" href="#s2">[2]</a></p>
+      <h2><span class="num">2.1</span>Two different properties</h2>
+      <p>“That doesn’t scale” is often used to end a design argument. It usually means the system’s architecture limits how far the service can grow, but the phrase is used loosely.<a class="src" href="#s2">[2]</a> To use it precisely, separate two properties. <b>Performance</b> is how much work the system gets done and how fast. <b>Scalability</b> is what happens to performance when you add resources.</p>
 
-      <h3 id="proportional">Proportional to resources added</h3>
-      <p>The primer adopts Vogels’ definition: a service is <b>scalable</b> if it results in increased <b>performance</b> in a manner <b>proportional to resources added</b>.<a class="src" href="#s1">[1]</a><a class="src" href="#s2">[2]</a> Double the servers and, ideally, you serve about double the work. A system whose gains flatten out as you add machines is not scalable, however fast each machine is.</p>
+      <h3 id="proportional">Scalable means proportional</h3>
+      <p>A service is <b>scalable</b> if it results in increased performance in a manner <b>proportional to resources added</b>.<a class="src" href="#s1">[1]</a><a class="src" href="#s2">[2]</a> Double the servers and you should serve about double the work. If each added machine buys less than the one before, the system does not scale, however fast each machine is.</p>
       <figure>
         <div class="figwrap">
           <svg viewBox="0 0 640 300" role="img" aria-labelledby="f1t">
@@ -265,8 +269,8 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
         <figcaption><b>Figure 2.1</b> The definition as a picture. Each step of added resources should buy the same step of performance (teal). When gains shrink with every addition (amber), the system does not scale. Curves are illustrative, not measured.</figcaption>
       </figure>
 
-      <h3 id="units">More work vs larger work</h3>
-      <p>“Increased performance” usually means serving <b>more units of work</b>, such as more requests per second. It can also mean handling <b>larger units of work</b>, for example when the dataset each request touches keeps growing.<a class="src" href="#s1">[1]</a><a class="src" href="#s2">[2]</a> A system can scale along one of these axes and fail along the other.</p>
+      <h3 id="units">More work or larger work</h3>
+      <p>“Increased performance” has two meanings. Usually it means serving <b>more units of work</b>, such as more requests per second. It can also mean handling <b>larger units of work</b>, for example when the dataset behind each request keeps growing.<a class="src" href="#s1">[1]</a><a class="src" href="#s2">[2]</a> Each is a separate <b>axis of scale</b>, and a system can scale along one while failing along the other.</p>
       <figure>
         <div class="figwrap">
           <svg viewBox="0 0 640 220" role="img" aria-labelledby="f2t">
@@ -298,17 +302,17 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
             <text x="520" y="160" text-anchor="middle" class="s-tm">GB → TB</text>
           </svg>
         </div>
-        <figcaption><b>Figure 2.2</b> The two meanings of “more performance” in the definition: serving more units of work, or serving larger ones as data grows.<a class="src" href="#s1">[1]</a></figcaption>
+        <figcaption><b>Figure 2.2</b> Two axes along which load grows: more units of work of the same size, or the same unit of work over a growing dataset.<a class="src" href="#s2">[2]</a></figcaption>
       </figure>
     </section>
 
     <!-- ===================== 2.2 ===================== -->
     <section id="diagnose">
-      <h2><span class="num">2.2</span>Performance problem or scalability problem?</h2>
-      <p>The primer gives a quick test, taken from Jonas Bonér’s talk <i>Scalability, Availability &amp; Stability Patterns</i>, where it appears as two questions: “How do I know if I have a performance problem?” and “How do I know if I have a scalability problem?”<a class="src" href="#s1">[1]</a><a class="src" href="#s3">[3]</a></p>
+      <h2><span class="num">2.2</span>Telling the problems apart</h2>
+      <p>Because the two properties are different, a slow system can be failing at either one, and the fix depends on which. A quick test separates them:<a class="src" href="#s1">[1]</a><a class="src" href="#s3">[3]</a></p>
       <ul>
-        <li>If you have a <b>performance problem</b>, your system is slow for a single user.</li>
-        <li>If you have a <b>scalability problem</b>, your system is fast for a single user but slow under heavy load.</li>
+        <li>If the system is slow for a <b>single user</b>, you have a <b>performance problem</b>.</li>
+        <li>If the system is fast for a single user but slow <b>under heavy load</b>, you have a <b>scalability problem</b>.</li>
       </ul>
       <figure>
         <div class="figwrap">
@@ -336,37 +340,37 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
             </g>
           </svg>
         </div>
-        <figcaption><b>Figure 2.3</b> The primer’s test drawn as response time against load. Read the left edge first: slow at one user means a performance problem; fast at one user but climbing as load rises means a scalability problem.<a class="src" href="#s1">[1]</a> Shapes are illustrative.</figcaption>
+        <figcaption><b>Figure 2.3</b> The test drawn as response time against load. Read the left edge first: slow at one user means a performance problem; fast at one user but climbing as load rises means a scalability problem.<a class="src" href="#s1">[1]</a> Shapes are illustrative.</figcaption>
       </figure>
+      <p>Each problem calls for a different measurement. A performance problem is found by <b>profiling</b> a single request to see where its time goes, for example with a slow query log. A scalability problem is found by <b>benchmarking</b>: simulating high load, for example with Apache Bench (<code>ab</code>), and watching how the system responds.<a class="src" href="#s4">[4]</a></p>
       <div class="tablewrap">
         <table>
           <caption class="tcap"><b>Table 2.1</b> Telling the two problems apart</caption>
           <thead><tr><th></th><th>Performance problem</th><th>Scalability problem</th></tr></thead>
           <tbody>
-            <tr><td><b>With one user</b></td><td>Slow</td><td>Fast</td></tr>
-            <tr><td><b>Under heavy load</b></td><td>Slow</td><td>Slow</td></tr>
-            <tr><td><b>What is wrong</b></td><td>The work for a single request costs too much</td><td>Cost grows faster than load, or added resources don’t help</td></tr>
-            <tr><td><b>How to see it</b></td><td><b>Profile</b> a single request, e.g. with a slow query log</td><td><b>Benchmark</b> by simulating high load, e.g. with <code>ab</code></td></tr>
+            <tr><td><b>With one user</b></td><td>Slow<a class="src" href="#s1">[1]</a></td><td>Fast<a class="src" href="#s1">[1]</a></td></tr>
+            <tr><td><b>Under heavy load</b></td><td>Slow</td><td>Slow<a class="src" href="#s1">[1]</a></td></tr>
+            <tr><td><b>What is wrong</b></td><td>Each request costs too much</td><td>Added resources don’t raise performance in proportion<a class="src" href="#s2">[2]</a></td></tr>
+            <tr><td><b>How to find it</b></td><td>Profile a single request<a class="src" href="#s4">[4]</a></td><td>Benchmark under simulated load<a class="src" href="#s4">[4]</a></td></tr>
           </tbody>
         </table>
       </div>
-      <p style="font-size:.85rem;color:var(--muted)">Rows 1–2 restate the primer’s test.<a class="src" href="#s1">[1]</a> Row 3 follows from Vogels’ definition.<a class="src" href="#s2">[2]</a> Row 4 uses the tools the primer names later, in its SQL tuning section.<a class="src" href="#s4">[4]</a></p>
     </section>
 
     <!-- ===================== 2.3 ===================== -->
-    <section id="hard">
-      <h2><span class="num">2.3</span>Why scalability is hard</h2>
-      <p>Vogels names the reasons a system that works today can stop scaling tomorrow.<a class="src" href="#s2">[2]</a></p>
+    <section id="causes">
+      <h2><span class="num">2.3</span>Why added resources stop paying off</h2>
+      <p>A scalability problem means the proportional line in Figure 2.1 has started to bend. There are three common reasons, and each one breaks the definition in a different way.<a class="src" href="#s2">[2]</a></p>
 
-      <h3 id="redundancy">Redundancy without slowdown</h3>
-      <p>Resources are not only added for capacity. Distributed systems also add them for <b>reliability</b>, and Vogels calls <b>redundancy</b> the first line of defence against failure. For an always-on service, being scalable therefore also means you can add resources for redundancy <b>without losing performance</b>.<a class="src" href="#s2">[2]</a></p>
-      <div class="callout tip"><span class="label">Link to Unit 1</span><p>The extra load balancer, the second master and the standby server in Unit 1 are all redundant resources. They are only worth adding if they don’t slow the system down.</p></div>
+      <h3 id="algorithms">Costs that grow faster than load</h3>
+      <p>Many algorithms work well at low request rates on small datasets, then become very expensive as the request rate rises, the dataset grows or the number of nodes increases.<a class="src" href="#s2">[2]</a> The cost of each unit of work climbs as the system grows, so new resources are spent keeping up instead of adding capacity. This is why scalability cannot be added after the fact: the choice of algorithm decides whether the line stays straight.<a class="src" href="#s2">[2]</a></p>
 
-      <h3 id="by-design">It can’t be added later</h3>
-      <p>Scalability cannot be bolted on after the fact. Many algorithms behave well at low request rates on small datasets, then become very expensive as request rates rise, datasets grow or the number of nodes increases. A system has to be designed so that added resources really do raise performance.<a class="src" href="#s2">[2]</a></p>
+      <h3 id="redundancy">Redundancy that costs performance</h3>
+      <p>Not every resource is added for capacity. Distributed systems also add resources for <b>reliability</b>, and <b>redundancy</b> is the first line of defence against failure. For an always-on service, being scalable therefore also means you can add resources for redundancy <b>without losing performance</b>.<a class="src" href="#s2">[2]</a> If every extra copy slows the system down, the system has a scalability problem even when no extra users arrive.</p>
+      <div class="callout tip"><span class="label">Link to Unit 1</span><p>The second load balancer, the second master and the standby server in <a href="unit1.html">Unit 1</a> are all redundant resources. By this definition they are only worth adding if they don’t slow the system down.</p></div>
 
-      <h3 id="heterogeneity">Heterogeneity</h3>
-      <p>Scaling out means living with <b>heterogeneity</b>. Over time a fleet mixes hardware generations, larger machines become cost-effective and get added, and some resources end up placed farther apart. Nodes then differ in processing speed and storage. Algorithms that assume all nodes are equal either break down or <b>underuse</b> the newer, more powerful machines.<a class="src" href="#s2">[2]</a></p>
+      <h3 id="heterogeneity">Nodes that are not equal</h3>
+      <p>Scaling out over time produces <b>heterogeneity</b>. A fleet comes to mix hardware generations, larger machines become cost-effective and get added, and some resources end up placed farther apart. Nodes then differ in processing speed and storage. Algorithms that assume all nodes are equal either break down or <b>underuse</b> the newer, more powerful machines.<a class="src" href="#s2">[2]</a> Either way, the newest resources add less performance than they should.</p>
       <figure>
         <div class="figwrap">
           <svg viewBox="0 0 640 250" role="img" aria-labelledby="f4t">
@@ -393,75 +397,69 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
             <text x="212" y="116" text-anchor="middle" class="s-ts">equal share</text>
           </svg>
         </div>
-        <figcaption><b>Figure 2.4</b> What Vogels warns about: outlined bars are each node’s capacity, filled bars the work sent to it. Splitting work evenly across unequal nodes overloads old hardware and wastes new hardware.<a class="src" href="#s2">[2]</a> Sizes are illustrative. The primer’s later Load balancer section lists <b>weighted round robin</b>, one way to send more traffic to bigger nodes.<a class="src" href="#s5">[5]</a></figcaption>
+        <figcaption><b>Figure 2.4</b> Outlined bars are each node’s capacity; filled bars are the work sent to it. Splitting work evenly across unequal nodes overloads old hardware and wastes new hardware.<a class="src" href="#s2">[2]</a> Sizes are illustrative. <b>Weighted round robin</b>, covered later under load balancers, is one way to send more traffic to bigger nodes.<a class="src" href="#s5">[5]</a></figcaption>
       </figure>
     </section>
 
     <!-- ===================== 2.4 ===================== -->
     <section id="design">
-      <h2><span class="num">2.4</span>Designing for scale</h2>
-      <p>Vogels concludes that good scalability is possible, but only if the system is architected and engineered for it from the start. He lists what that takes:<a class="src" href="#s2">[2]</a></p>
-      <ol>
-        <li>Identify the <b>axes of scale</b>: the directions in which the system is expected to grow (requests, data size, nodes).</li>
-        <li>Decide where <b>redundancy</b> is needed and how it will be handled.</li>
-        <li>Plan for <b>heterogeneity</b> in the resources the system will run on.</li>
-        <li>Make sure architects know which <b>tools</b> fit which conditions and what the common <b>pitfalls</b> are.</li>
-      </ol>
-      <p>Bonér’s deck opens its scalability patterns by asking <b>scale up vs scale out?</b> (bigger machine vs more machines, both covered in Unit 1), then gives four general recommendations before turning to the trade-offs.<a class="src" href="#s3">[3]</a> The deck names them without detail, so the short definitions below come from standard references.</p>
+      <h2><span class="num">2.4</span>Designing so resources pay off</h2>
+      <p>Good scalability is possible, but only if the system is architected and engineered for it from the start.<a class="src" href="#s2">[2]</a> The design steps below answer the causes in 2.3 one by one.</p>
+
+      <h3 id="architecture">At the architecture level</h3>
       <div class="tablewrap">
         <table>
-          <caption class="tcap"><b>Table 2.2</b> Bonér’s general recommendations for scalable code</caption>
-          <thead><tr><th>Recommendation</th><th>What the term means</th></tr></thead>
+          <caption class="tcap"><b>Table 2.2</b> Design steps and the cause each one addresses</caption>
+          <thead><tr><th>Design step<a class="src" href="#s2">[2]</a></th><th>Addresses</th></tr></thead>
           <tbody>
-            <tr><td><b>Immutability as the default</b></td><td>An immutable object cannot change after it is created, so it can be shared without locks or copies.<a class="src" href="#s6">[6]</a></td></tr>
-            <tr><td><b>Referential transparency</b></td><td>An expression can be replaced by its value without changing the program’s behaviour, a property of pure functions.<a class="src" href="#s7">[7]</a></td></tr>
-            <tr><td><b>Laziness</b></td><td>Lazy evaluation delays computing a value until it is actually needed, so unneeded work is skipped.<a class="src" href="#s8">[8]</a></td></tr>
-            <tr><td><b>Think about your data</b></td><td>Different data needs different guarantees, so don’t give all of it the same treatment.<a class="src" href="#s3">[3]</a></td></tr>
+            <tr><td>Identify the <b>axes of scale</b>: the directions the system will grow in (requests, data size, nodes)</td><td>Costs that grow faster than load, along those axes</td></tr>
+            <tr><td>Decide where <b>redundancy</b> is needed and how it will be handled</td><td>Redundancy that costs performance</td></tr>
+            <tr><td>Plan for <b>heterogeneity</b> in the resources the system will run on</td><td>Nodes that are not equal</td></tr>
+            <tr><td>Know which <b>tools</b> fit which conditions, and the common <b>pitfalls</b></td><td>All three</td></tr>
           </tbody>
         </table>
       </div>
+      <p>The first architectural choice is usually <b>scale up vs scale out</b>: a bigger machine, or more machines.<a class="src" href="#s3">[3]</a> Unit 1 covered both. Scaling out is what makes the three causes above matter, because it multiplies nodes, copies and hardware generations.<a class="src" href="#s2">[2]</a></p>
+
+      <h3 id="code">At the code level</h3>
+      <p>Inside the code, four general recommendations help work spread across more resources.<a class="src" href="#s3">[3]</a> The source names them without detail, so the definitions here come from standard references.</p>
+      <div class="tablewrap">
+        <table>
+          <caption class="tcap"><b>Table 2.3</b> General recommendations for scalable code</caption>
+          <thead><tr><th>Recommendation</th><th>What it means</th><th>Why it helps</th></tr></thead>
+          <tbody>
+            <tr><td><b>Immutability as the default</b></td><td>An object’s state cannot be modified after it is created.<a class="src" href="#s6">[6]</a></td><td>Immutable objects are inherently thread-safe, so many threads can share them without one changing data under another.<a class="src" href="#s6">[6]</a></td></tr>
+            <tr><td><b>Referential transparency</b></td><td>Replacing an expression with another that has the same value does not change the result.<a class="src" href="#s7">[7]</a></td><td>Enables optimisations such as memoisation (reusing computed results) and parallelisation.<a class="src" href="#s7">[7]</a></td></tr>
+            <tr><td><b>Laziness</b></td><td>Lazy evaluation delays computing an expression until its value is needed.<a class="src" href="#s8">[8]</a></td><td>Aims to never perform unnecessary work.<a class="src" href="#s8">[8]</a></td></tr>
+            <tr><td><b>Think about your data</b></td><td>Different data needs different guarantees.<a class="src" href="#s3">[3]</a></td><td>Strict guarantees can be kept only where they are needed. Unit 4 returns to this as availability vs consistency.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout tip"><span class="label">Keep in mind</span><p>Fixing a performance problem makes each request cheaper; fixing a scalability problem makes added resources pay off. A system needs both, and they usually call for different fixes.</p></div>
     </section>
 
     <!-- ===================== 2.5 ===================== -->
-    <section id="tradeoffs">
-      <h2><span class="num">2.5</span>One of three trade-offs</h2>
-      <p>In both Bonér’s deck and the primer, performance vs scalability is the first of three trade-offs, followed by latency vs throughput and availability vs consistency.<a class="src" href="#s1">[1]</a><a class="src" href="#s3">[3]</a></p>
-      <div class="tablewrap">
-        <table>
-          <caption class="tcap"><b>Table 2.3</b> The three high-level trade-offs</caption>
-          <thead><tr><th>Trade-off</th><th>The question it asks</th><th>Unit</th></tr></thead>
-          <tbody>
-            <tr><td><b>Performance vs scalability</b></td><td>Is it slow for one user, or only under load?</td><td>2 (this unit)</td></tr>
-            <tr><td><b>Latency vs throughput</b></td><td>How long one action takes vs how many actions per unit of time</td><td>3</td></tr>
-            <tr><td><b>Availability vs consistency</b></td><td>When the network splits, keep answering or keep data correct? (CAP theorem)</td><td>4</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="callout tip"><span class="label">Keep in mind</span><p>Everything is a trade-off.<a class="src" href="#s1">[1]</a> Fixing a performance problem makes each request cheaper; fixing a scalability problem makes extra resources pay off. A system needs both, and they usually call for different fixes.</p></div>
-    </section>
-
-    <!-- ===================== 2.6 ===================== -->
     <section id="resources">
-      <h2><span class="num">2.6</span>Resources</h2>
+      <h2><span class="num">2.5</span>Resources</h2>
       <div class="res">
-        <a href="https://www.allthingsdistributed.com/2006/03/a_word_on_scalability.html"><b>A Word on Scalability</b><span>Werner Vogels’ short article; the source of the primer’s definition</span></a>
-        <a href="https://speakerdeck.com/jboner/scalability-availability-and-stability-patterns"><b>Scalability, Availability &amp; Stability Patterns</b><span>Jonas Bonér’s deck on Speaker Deck (easier to open than SlideShare)</span></a>
-        <a href="https://www.slideshare.net/jboner/scalability-availability-stability-patterns/"><b>Same deck on SlideShare</b><span>The link the primer gives</span></a>
-        <a href="https://github.com/donnemartin/system-design-primer#performance-vs-scalability"><b>Primer: Performance vs scalability</b><span>The source section for this unit</span></a>
-        <a href="https://github.com/donnemartin/system-design-primer#sql-tuning"><b>Primer: SQL tuning</b><span>Benchmarking and profiling, the tools for diagnosing either problem</span></a>
-        <a href="https://httpd.apache.org/docs/2.4/programs/ab.html"><b>Apache Bench (<code>ab</code>)</b><span>The load-testing tool the primer suggests for benchmarks</span></a>
+        <a href="https://www.allthingsdistributed.com/2006/03/a_word_on_scalability.html"><b>A Word on Scalability</b><span>Short article behind the definition and the three causes in this unit</span></a>
+        <a href="https://speakerdeck.com/jboner/scalability-availability-and-stability-patterns"><b>Scalability, Availability &amp; Stability Patterns</b><span>Slide deck behind the diagnosis test and the code-level recommendations</span></a>
+        <a href="https://www.slideshare.net/jboner/scalability-availability-stability-patterns/"><b>Same deck on SlideShare</b><span>The original link; may need JavaScript and a login to view</span></a>
+        <a href="https://github.com/donnemartin/system-design-primer#performance-vs-scalability"><b>Source section</b><span>Performance vs scalability in The System Design Primer</span></a>
+        <a href="https://github.com/donnemartin/system-design-primer#sql-tuning"><b>SQL tuning</b><span>Benchmarking and profiling, the tools for finding either problem</span></a>
+        <a href="https://httpd.apache.org/docs/2.4/programs/ab.html"><b>Apache Bench (<code>ab</code>)</b><span>A simple load-testing tool for benchmarks</span></a>
         <a href="https://github.com/donnemartin/system-design-primer#latency-vs-throughput"><b>Next: Latency vs throughput</b><span>The second trade-off (Unit 3)</span></a>
         <a href="unit1.html"><b>Unit 1 · Scaling fundamentals</b><span>Vertical vs horizontal scaling and redundancy in practice</span></a>
       </div>
     </section>
 
-    <!-- ===================== 2.7 ===================== -->
+    <!-- ===================== 2.6 ===================== -->
     <section id="sources">
-      <h2><span class="num">2.7</span>Sources</h2>
+      <h2><span class="num">2.6</span>Sources</h2>
       <ol class="sources">
         <li id="s1">D. Martin et al., <a href="https://github.com/donnemartin/system-design-primer#performance-vs-scalability">The System Design Primer: Performance vs scalability</a> and <a href="https://github.com/donnemartin/system-design-primer#next-steps">Next steps</a>, GitHub.</li>
         <li id="s2">W. Vogels, <a href="https://www.allthingsdistributed.com/2006/03/a_word_on_scalability.html">A Word on Scalability</a>, All Things Distributed, 30 March 2006.</li>
-        <li id="s3">J. Bonér, <a href="https://www.slideshare.net/jboner/scalability-availability-stability-patterns/">Scalability, Availability &amp; Stability Patterns</a>, SlideShare, 2010; text read from the <a href="https://speakerdeck.com/jboner/scalability-availability-and-stability-patterns">Speaker Deck copy</a> (slides 10–21).</li>
+        <li id="s3">J. Bonér, <a href="https://www.slideshare.net/jboner/scalability-availability-stability-patterns/">Scalability, Availability &amp; Stability Patterns</a>, 12 May 2010; text read from the <a href="https://speakerdeck.com/jboner/scalability-availability-and-stability-patterns">Speaker Deck copy</a>, slides 10–28.</li>
         <li id="s4">D. Martin et al., <a href="https://github.com/donnemartin/system-design-primer#sql-tuning">The System Design Primer: SQL tuning</a>, GitHub.</li>
         <li id="s5">D. Martin et al., <a href="https://github.com/donnemartin/system-design-primer#load-balancer">The System Design Primer: Load balancer</a>, GitHub.</li>
         <li id="s6">Wikipedia, <a href="https://en.wikipedia.org/wiki/Immutable_object">Immutable object</a>.</li>
@@ -476,30 +474,29 @@ ol.sources li{margin:6px 0;text-align:left;word-break:break-word}
   <div class="note-head"><strong id="noteTitle">Key terms · Unit 2</strong><button id="noteClose" aria-label="Close key terms">×</button></div>
   <h5>Definitions</h5>
   <dl>
-    <dt>Performance</dt><dd>How much work a system gets done, and how quickly.</dd>
+    <dt>Performance</dt><dd>How much work a system gets done, and how fast.</dd>
     <dt>Scalable</dt><dd>Adding resources raises performance in proportion.</dd>
-    <dt>Unit of work</dt><dd>One piece of work, e.g. a request. Growth = more units or larger units.</dd>
-    <dt>Axis of scale</dt><dd>A direction the system will grow: requests, data, nodes.</dd>
+    <dt>Unit of work</dt><dd>One piece of work, e.g. a request. Load grows as more units or larger units.</dd>
+    <dt>Axis of scale</dt><dd>A direction the system grows in: requests, data, nodes.</dd>
   </dl>
   <h5>Diagnosis</h5>
   <dl>
     <dt>Performance problem</dt><dd>Slow even for a single user.</dd>
     <dt>Scalability problem</dt><dd>Fast for one user, slow under heavy load.</dd>
     <dt>Profile</dt><dd>Measure where one request spends its time (e.g. slow query log).</dd>
-    <dt>Benchmark</dt><dd>Simulate high load to see how the system behaves (e.g. <code>ab</code>).</dd>
+    <dt>Benchmark</dt><dd>Simulate high load and watch the response (e.g. <code>ab</code>).</dd>
   </dl>
-  <h5>Why it’s hard</h5>
+  <h5>Causes</h5>
   <dl>
     <dt>Redundancy</dt><dd>Extra resources for reliability; must not cost performance.</dd>
     <dt>Heterogeneity</dt><dd>Nodes of mixed speed and size; “all equal” algorithms fail or waste capacity.</dd>
     <dt>Scale up / scale out</dt><dd>Bigger machine / more machines.</dd>
   </dl>
-  <h5>Bonér’s recommendations</h5>
+  <h5>Code level</h5>
   <dl>
-    <dt>Immutability</dt><dd>Data that never changes after creation; safe to share.</dd>
-    <dt>Referential transparency</dt><dd>An expression can be swapped for its value.</dd>
+    <dt>Immutability</dt><dd>State can’t change after creation; safe to share across threads.</dd>
+    <dt>Referential transparency</dt><dd>An expression can be swapped for its value; enables memoisation.</dd>
     <dt>Laziness</dt><dd>Compute a value only when it’s needed.</dd>
-    <dt>Trade-off</dt><dd>Performance/scalability, latency/throughput, availability/consistency.</dd>
   </dl>
 </aside>
 
